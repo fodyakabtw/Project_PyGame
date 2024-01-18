@@ -1,8 +1,16 @@
 import pygame
 import sys
 import os
+from PIL import Image
 
 pygame.init()
+
+
+def change_size(size, name):
+    image = Image.open(name)
+    image = image.resize(size)
+    image.save(name)
+    return name
 
 
 class AnimatedSprite(pygame.sprite.Sprite):
@@ -41,6 +49,22 @@ class AnimatedSprite(pygame.sprite.Sprite):
                 self.attack = False
         self.cur_frame = (self.cur_frame + 1) % len(self.frames)
         self.image = self.frames[self.cur_frame]
+
+
+def load_image(name, colorkey=None):
+    fullname = os.path.join('data', name)
+    if not os.path.isfile(fullname):
+        print(f"Файл с изображением {fullname} не найден")
+        sys.exit()
+    image = pygame.image.load(fullname)
+    if colorkey is not None:
+        image = image.convert()
+        if colorkey == -1:
+            colorkey = image.get_at((0, 0))
+        image.set_colorkey(colorkey)
+    else:
+        image = image.convert_alpha()
+    return image
 
 
 class ImageButton:  # Воспомогательный класс для загрузки кнопок на основное окно
@@ -87,35 +111,35 @@ class ImageButton:  # Воспомогательный класс для заг�
             pygame.event.post(pygame.event.Event(pygame.USEREVENT, button=self))
 
 
-SIZE = WIDTH, HEIGHT = 1276, 717
+SIZE = WIDTH, HEIGHT = 1280, 800
 FPS = 60
 clock = pygame.time.Clock()
 screen = pygame.display.set_mode(SIZE)
-background_image = pygame.image.load('data/background_main_menu.jpg')
+pygame.display.set_icon(pygame.image.load('data/icon.png'))
+background_image = pygame.image.load(change_size(SIZE, 'data/background.png'))
 pygame.display.set_caption('The Legend of a Kingdom')
 # Загрузка и установка своего курсора
 cursor = pygame.image.load("data/cursor.png")
 pygame.mouse.set_visible(False)
-
 
 # Воспомогательная функция изменения разрешения окна игры.
 def change_video_mode(w, h, fullscreen=0):
     global screen, SIZE, WIDTH, HEIGHT, background_image
     SIZE = WIDTH, HEIGHT = w, h
     screen = pygame.display.set_mode(SIZE, fullscreen)
-    background_image = pygame.image.load(f'data/background_main_menu{WIDTH}.jpg')
+    background_image = pygame.image.load(change_size(SIZE, 'data/background.png'))
 
 
 # Функция основного меню игры:
 def main_menu():
     # Кнопки
     play_button = ImageButton(WIDTH / 2 - (252 / 2), 175, 252, 75, "", "data/start.png",
-                              "data/start_pink.png", "sounds/knopka.mp3")
-    settings_button = ImageButton(WIDTH / 2 - (252 / 2), 250, 252, 74, "", "data/settings.jpg",
-                                  "data/settings_hover.jpg", "sounds/knopka.mp3")
-    store_button = ImageButton(WIDTH / 2 - (252 / 2), 325, 252, 74, "", "data/store.jpg",
+                              "data/start_hover.png", "sounds/knopka.mp3")
+    settings_button = ImageButton(WIDTH / 2 - (252 / 2), 250, 252, 74, "", "data/settings.png",
+                                  "data/settings_hover.png", "sounds/knopka.mp3")
+    store_button = ImageButton(WIDTH / 2 - (252 / 2), 325, 252, 74, "", "data/store.png",
                                "", "sounds/knopka.mp3")
-    quit_button = ImageButton(WIDTH / 2 - (252 / 2), 400, 252, 74, "", "data/quit.jpg",
+    quit_button = ImageButton(WIDTH / 2 - (252 / 2), 400, 252, 74, "", "data/quit.png",
                               "", "sounds/knopka.mp3")
     btn = [play_button, settings_button, store_button, quit_button]  # Добавление кнопок в список
     running = True
@@ -342,35 +366,19 @@ def fade():
 all_sprites = pygame.sprite.Group()
 
 
-def load_image(name, colorkey=None):
-    fullname = os.path.join('data', name)
-    if not os.path.isfile(fullname):
-        print(f"Файл с изображением {fullname} не найден")
-        sys.exit()
-    image = pygame.image.load(fullname)
-    if colorkey is not None:
-        image = image.convert()
-        if colorkey == -1:
-            colorkey = image.get_at((0, 0))
-        image.set_colorkey(colorkey)
-    else:
-        image = image.convert_alpha()
-    return image
-
-
 def battle():
-    size = width, height = 960, 600
-    screen1 = pygame.display.set_mode(size)
+    screen1 = pygame.display.set_mode(SIZE)
     run = True
     bow_img = load_image("bow.png")
     numbs = [load_image("one.png"), load_image("two.png")]
-    bow_btn = ImageButton(80, 40, 80, 80, "",
+    health = load_image("100hp.png")
+    bow_btn = ImageButton(220, 40, 80, 80, "",
                           'data/bow.png')
     sword_img = load_image("sword.png")
-    sword_btn = ImageButton(220, 40, 80, 80, "",
+    sword_btn = ImageButton(320, 40, 80, 80, "",
                             'data/sword.png')
     btns = [bow_btn, sword_btn]
-    background = load_image("battle_background.png")
+    background = pygame.image.load(change_size(SIZE, 'data/battle_background.png'))
     clock = pygame.time.Clock()
     player_idle = AnimatedSprite(load_image('idle.png'), 12, 1, 160, 250, 'player')
     slime_idle = AnimatedSprite(load_image('slime_idle.png'), 5, 1, 480, 210, 'slime')
@@ -397,12 +405,13 @@ def battle():
                 player_idle.cur_frame = 0
                 player_idle.attack = True
         screen1.blit(background, (0, 0))
+        screen1.blit(health, (10, 40))
         for btn in btns:
             btn.draw(screen1)
         k = 0
         for element in numbs:
-            screen1.blit(element, (100 + k, 120))
-            k += 140
+            screen1.blit(element, (220 + k, 120))
+            k += 100
         all_sprites.draw(screen1)
         all_sprites.update()
         pygame.display.flip()
