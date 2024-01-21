@@ -1,6 +1,7 @@
 import pygame
 import sys
 import os
+from nedodelish import game
 from PIL import Image
 
 pygame.init()

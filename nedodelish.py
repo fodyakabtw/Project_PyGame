@@ -10,6 +10,18 @@ clock = pygame.time.Clock()
 pygame.display.set_caption('The Legend of a Kingdom')
 
 
+def pause():
+    print("ПАУЗА")
+    paused = True
+    while paused:
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                paused = False
+
+    pygame.display.update()
+    clock.tick(15)
+
+
 def load_image(name, colorkey=None):
     fullname = os.path.join('data', name)
     if not os.path.isfile(fullname):
@@ -207,31 +219,39 @@ enemies_group = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
 wall_group = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
-running = True
 camera = Camera()
 player, level_x, level_y = generate_level(load_level('lvl1.txt'))
 STEP = 50
-while running:
-    status1 = player.get_status()
-    rect1 = player.get_rect()
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-    player.input()
-    player.update(player.get_status())
-    camera.update(player)
-    screen.fill('black')
-    status2 = player.get_status()
-    rect2 = player.get_rect()
-    if status1 != status2 and rect1 != rect2:
-        print(1)
-    for sprite in all_sprites:
-        camera.apply(sprite)
-    wall_group.draw(screen)
-    tiles_group.draw(screen)
-    enemies_group.draw(screen)
-    enemies_group.update()
-    player_group.draw(screen)
-    call_update = False
-    clock.tick(15)
-    pygame.display.flip()
+
+
+def game():
+    running = True
+
+    while running:
+        status1 = player.get_status()
+        rect1 = player.get_rect()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                pause()
+        player.input()
+        player.update(player.get_status())
+        camera.update(player)
+        screen.fill('black')
+        status2 = player.get_status()
+        rect2 = player.get_rect()
+        if status1 != status2 and rect1 != rect2:
+            print(1)
+        for sprite in all_sprites:
+            camera.apply(sprite)
+        wall_group.draw(screen)
+        tiles_group.draw(screen)
+        enemies_group.draw(screen)
+        enemies_group.update()
+        player_group.draw(screen)
+        clock.tick(15)
+        pygame.display.flip()
+
+
+game()
