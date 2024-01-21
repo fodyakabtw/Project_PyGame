@@ -3,9 +3,6 @@ import sys
 import os
 
 
-FPS = 60
-
-
 pygame.init()
 size = width, height = 1000, 600
 screen = pygame.display.set_mode(size)
@@ -45,13 +42,14 @@ move_left = [load_image('left/left1.png'), load_image('left/left2.png'),
              load_image('left/left3.png'), load_image('left/left4.png'),
              load_image('left/left5.png'), load_image('left/left6.png'),
              load_image('left/left7.png')]
-mpve_right = [load_image('right/right1.png'), load_image('right/right2.png'),
+move_right = [load_image('right/right1.png'), load_image('right/right2.png'),
               load_image('right/right3.png'), load_image('right/right4.png'),
               load_image('right/right5.png'), load_image('right/right6.png'),
               load_image('right/right7.png')]
 move_down = [load_image('down/down1.png'), load_image('down/down2.png'),
              load_image('down/down3.png'), load_image('down/down4.png'),
              load_image('down/down5.png')]
+
 
 def terminate():
     pygame.quit()
@@ -125,8 +123,12 @@ class Player(pygame.sprite.Sprite):
         self.pos_x, self.pos_y = tile_width * pos_x + 13, tile_height * pos_y + 5
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = tile_width * pos_x + 13, tile_height * pos_y + 5
-        self.status = 'down'
+        self.status = ''
         self.directions = {'up': (0, 8), 'down': (3, 5), 'left': (1, 7), 'right': (2, 7)}
+        self.hero_image_number_up = 0
+        self.hero_image_number_down = 0
+        self.hero_image_number_right = 0
+        self.hero_image_number_left = 0
 
     def move(self, x, y):
         self.rect = self.rect.move(x, y)
@@ -137,18 +139,19 @@ class Player(pygame.sprite.Sprite):
             self.pos_x, self.pos_y = self.pos_x - x, self.pos_y - y
 
     def input(self):
+        player.status = False
         key = pygame.key.get_pressed()
         if key[pygame.K_s]:
-            player.move(0, 5)
+            player.move(0, 25)
             player.status = 'down'
         if key[pygame.K_w]:
-            player.move(0, -5)
+            player.move(0, -25)
             player.status = 'up'
         if key[pygame.K_a]:
-            player.move(-5, 0)
+            player.move(-25, 0)
             player.status = 'left'
         if key[pygame.K_d]:
-            player.move(5, 0)
+            player.move(25, 0)
             player.status = 'right'
 
     def get_status(self):
@@ -157,7 +160,28 @@ class Player(pygame.sprite.Sprite):
     def get_rect(self):
         return self.pos_x, self.pos_y
 
+    def update(self, player_status):
+        if self.hero_image_number_up > 6:
+            self.hero_image_number_up = 0
+        if self.hero_image_number_down >= 4:
+            self.hero_image_number_down = 0
+        if self.hero_image_number_right > 5:
+            self.hero_image_number_right = 0
+        if self.hero_image_number_left > 4:
+            self.hero_image_number_left = 0
 
+        if player_status == 'up':
+            self.hero_image_number_up += 1
+            self.image = move_up[self.hero_image_number_up % 7]
+        elif player_status == 'down':
+            self.hero_image_number_down += 1
+            self.image = move_down[self.hero_image_number_down % 6]
+        elif player_status == 'right':
+            self.hero_image_number_right += 1
+            self.image = move_right[self.hero_image_number_right % 6]
+        elif player_status == 'left':
+            self.hero_image_number_left += 1
+            self.image = move_left[self.hero_image_number_left % 4]
 
 
 def generate_level(level):
@@ -194,6 +218,7 @@ while running:
         if event.type == pygame.QUIT:
             running = False
     player.input()
+    player.update(player.get_status())
     camera.update(player)
     screen.fill('black')
     status2 = player.get_status()
@@ -207,5 +232,6 @@ while running:
     enemies_group.draw(screen)
     enemies_group.update()
     player_group.draw(screen)
-    clock.tick(FPS)
+    call_update = False
+    clock.tick(15)
     pygame.display.flip()
