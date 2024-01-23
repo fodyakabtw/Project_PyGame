@@ -45,7 +45,7 @@ tile_images = {'wall': load_image('wall.png'), 'empty': load_image('grass.png'),
                '6': load_image('right_wall.png'), '7': load_image('upper_right_corner.png'),
                '8': load_image('top_wall.png'), 't': load_image('tree.png')}
 player_image = load_image('cat.png')
-enemies_images = {'s': load_image('slime.png')}
+enemies_images = {'s': load_image('slime_idle.png')}
 tile_width = tile_height = 200
 move_up = [load_image('up/up1.png'), load_image('up/up2.png'), load_image('up/up3.png'),
            load_image('up/up4.png'), load_image('up/up5.png'), load_image('up/up6.png'),
@@ -136,7 +136,6 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = tile_width * pos_x + 13, tile_height * pos_y + 5
         self.status = ''
-        self.directions = {'up': (0, 8), 'down': (3, 5), 'left': (1, 7), 'right': (2, 7)}
         self.hero_image_number_up = 0
         self.hero_image_number_down = 0
         self.hero_image_number_right = 0
@@ -204,7 +203,7 @@ def generate_level(level):
                 Tile('empty', x, y)
             elif level[y][x] == 's':
                 Tile('empty', x, y)
-                AnimatedSprite(load_image('slime_idle.png'), 4, 1, tile_width * x,
+                AnimatedSprite(load_image('slime_idle.png'), 5, 1, tile_width * x,
                                tile_height * y)
             elif level[y][x] in ['a', '1', '2', '3', '4', '5', '6', '7', '8', 't']:
                 Wall(level[y][x], x, y)
