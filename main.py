@@ -15,7 +15,7 @@ def change_size(size, name):
     return name
 
 
-# Воспомогательная функция воспроизведения фоновой музыки.
+# Воспомогательная функция воспроизведения звуков.
 # def sound_playback(file, volume=1.0, flagstoporpause=False):
 #     global gromkost
 #     volume = gromkost
@@ -323,41 +323,70 @@ class ImageButton:  # Воспомогательный класс для заг�
             pygame.event.post(pygame.event.Event(pygame.USEREVENT, button=self))
 
 
+#Функция вывода любого текста на экран
+def print_text(mess, x, y, font_color=(0, 0, 0), font_type='Arial Black', font_size=30):
+    font_type = pygame.font.Font(None, font_size)
+    text = font_type.render(mess, True, font_color)
+    screen.blit(text, (x, y))
+
+
+flag_enable_sound = False
+
+
 # Функция паузы
 def pause():
-    print("ПАУЗА")
+    global flag_enable_sound
+    paused = True
+    print("Нажмите клавишу 1 для того, чтобы вернуться в главное меню!")
+    print("Нажмите клавишу 2 для того, чтобы продолжить игру!")
+    print("Нажмите клавишу 3 для того, чтобы выключить музыку!")
     # Создание кнопок:
-    return_to_menu = ImageButton(WIDTH / 2 - (160 / 2), 175, 160, 160, "",
+    return_to_menu = ImageButton(WIDTH / 2 - (160 / 2), 200, 160, 160, "",
                                  "data/return_to_menu.png",
                                  "data/return_to_menu.png",
                                  "sounds/knopka.mp3")
-    continue_play = ImageButton(WIDTH / 2 - (160 / 2), 175, 160, 160, "",
+    continue_play = ImageButton(WIDTH / 2 - (160 / 2), 200, 160, 160, "",
                                 "data/continue.png",
                                 "data/continue.png",
                                 "sounds/knopka.mp3")
-    enable_sound = ImageButton(WIDTH / 2 - (160 / 2), 175, 160, 160, "",
+    enable_sound = ImageButton(WIDTH / 2 - (160 / 2), 200, 160, 160, "",
                                "data/enable_sound.png",
                                "data/enable_sound.png",
                                "sounds/knopka.mp3")
     btn = [return_to_menu, continue_play, enable_sound]
-    paused = True
     while paused:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
                 pygame.quit()
-                sys.exit()
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                paused = False
+                quit()
             if event.type == pygame.KEYDOWN and event.key == pygame.K_1:
-                print("Нажата 1, надо перейти в меню")
+                wall_group.empty(), tiles_group.empty(), enemies_group.empty(), player_group.empty()
+                main_menu()
+                paused = False
             if event.type == pygame.KEYDOWN and event.key == pygame.K_2:
-                print("Нажата 2, надо продолжить игру")
+                paused = False
             if event.type == pygame.KEYDOWN and event.key == pygame.K_3:
-                print("Нажата 3, надо выключить звук")
+                flag_enable_sound = not flag_enable_sound
+                if flag_enable_sound:
+                    s.stop()
+                else:
+                    s.play()
+            for but in btn:
+                but.handle_event(event)
 
-    pygame.display.update()
-    clock.tick(60)
+        i = -50 + WIDTH / 2 - 180
+        for but in btn:
+            but.set_pos(i)
+            i += 180
+            but.check_hover(pygame.mouse.get_pos())
+            but.draw(screen)
+
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_RETURN]:
+            paused = False
+
+        pygame.display.update()
+        clock.tick(15)
 
 
 # Воспомогательная функция изменения разрешения окна игры.
@@ -709,12 +738,15 @@ def game():
     player, level_x, level_y = generate_level(load_level('lvl1.txt'))
     running = True
     while running:
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_ESCAPE]:
+            pause()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
                 wall_group.empty(), tiles_group.empty(), enemies_group.empty(), player_group.empty()
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                pause()
+            # if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            #     pause()
         player.input()
         player.update(player.get_status())
         camera.update(player)
@@ -775,8 +807,10 @@ def battle():
     btns = [bow_btn, sword_btn]
     background = pygame.image.load(change_size(SIZE, 'data/battle_background.png'))
     clock = pygame.time.Clock()
-    player_idle = AnimatedSprite(load_image('idle.png'), 12, 1, 160, 250, 'player')
-    slime_idle = AnimatedSprite(load_image('slime_idle.png'), 5, 1, 480, 210, 'slime')
+    player_idle = AnimatedSprite(load_image('idle.png'), 12, 1, 160, 250,
+                                 'player')
+    slime_idle = AnimatedSprite(load_image('slime_idle.png'), 5, 1, 480, 210,
+                                'slime')
     while run:
         clock.tick(10)
         for event in pygame.event.get():
