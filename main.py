@@ -16,19 +16,18 @@ def change_size(size, name):
 
 
 # Воспомогательная функция воспроизведения звуков.
-# def sound_playback(file, volume=1.0, flagstoporpause=False):
-#     global gromkost
-#     volume = gromkost
-#     s = pygame.mixer.Sound(file)
-#     s.set_volume(volume)
-#     pygame.mixer.music.rewind()
-#     print(s.get_volume())
-#     if flagstoporpause:
-#         s.stop()
-#     else:
-#         s.set_volume(volume)
-#         pygame.mixer.music.rewind()
-#         s.play(loops=-1)
+def sound_playback(file, volume=0.4, flagstoporpause=False):
+    global gromkost
+    volume = gromkost
+    s = pygame.mixer.Sound(file)
+    s.set_volume(volume)
+    pygame.mixer.music.rewind()
+    if flagstoporpause:
+        s.stop()
+    else:
+        s.set_volume(volume)
+        pygame.mixer.music.rewind()
+        s.play()
 
 
 SIZE = WIDTH, HEIGHT = 1280, 800
@@ -177,6 +176,7 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = tile_width * pos_x + 13, tile_height * pos_y + 5
         self.status = ''
+        self.mask = pygame.mask.from_surface(self.image)
         self.hero_image_number_up = 0
         self.hero_image_number_down = 0
         self.hero_image_number_right = 0
@@ -263,22 +263,6 @@ camera = Camera()
 STEP = 50
 
 
-def load_image(name, colorkey=None):
-    fullname = os.path.join('data', name)
-    if not os.path.isfile(fullname):
-        print(f"Файл с изображением {fullname} не найден")
-        sys.exit()
-    image = pygame.image.load(fullname)
-    if colorkey is not None:
-        image = image.convert()
-        if colorkey == -1:
-            colorkey = image.get_at((0, 0))
-        image.set_colorkey(colorkey)
-    else:
-        image = image.convert_alpha()
-    return image
-
-
 class ImageButton:  # Воспомогательный класс для загрузки кнопок на основное окно
     def __init__(self, x, y, width, height, text, image_path, hover_image_path=None,
                  sound_path=None):
@@ -323,7 +307,7 @@ class ImageButton:  # Воспомогательный класс для заг�
             pygame.event.post(pygame.event.Event(pygame.USEREVENT, button=self))
 
 
-#Функция вывода любого текста на экран
+# Функция вывода любого текста на экран
 def print_text(mess, x, y, font_color=(0, 0, 0), font_type='Arial Black', font_size=30):
     font_type = pygame.font.Font(None, font_size)
     text = font_type.render(mess, True, font_color)
@@ -335,11 +319,12 @@ flag_enable_sound = False
 
 # Функция паузы
 def pause():
-    global flag_enable_sound
+    global flag_enable_sound, gromkost
     paused = True
     print("Нажмите клавишу 1 для того, чтобы вернуться в главное меню!")
     print("Нажмите клавишу 2 для того, чтобы продолжить игру!")
     print("Нажмите клавишу 3 для того, чтобы выключить музыку!")
+    print("Нажмите клавишу 4 для того, чтобы начать игру заново!")
     # Создание кнопок:
     return_to_menu = ImageButton(WIDTH / 2 - (160 / 2), 200, 160, 160, "",
                                  "data/return_to_menu.png",
@@ -353,6 +338,10 @@ def pause():
                                "data/enable_sound.png",
                                "data/enable_sound.png",
                                "sounds/knopka.mp3")
+    reset_game = ImageButton(WIDTH / 2 - (160 / 2), 380, 160, 160, "",
+                             "data/reset_game.png",
+                             "data/reset_game.png",
+                             "sounds/knopka.mp3")
     btn = [return_to_menu, continue_play, enable_sound]
     while paused:
         for event in pygame.event.get():
@@ -361,18 +350,28 @@ def pause():
                 quit()
             if event.type == pygame.KEYDOWN and event.key == pygame.K_1:
                 wall_group.empty(), tiles_group.empty(), enemies_group.empty(), player_group.empty()
+                sound_playback('sounds/knopka.mp3', gromkost)
+                fade()
                 main_menu()
                 paused = False
             if event.type == pygame.KEYDOWN and event.key == pygame.K_2:
+                sound_playback('sounds/knopka.mp3', gromkost)
                 paused = False
             if event.type == pygame.KEYDOWN and event.key == pygame.K_3:
+                sound_playback('sounds/knopka.mp3', gromkost)
                 flag_enable_sound = not flag_enable_sound
                 if flag_enable_sound:
                     s.stop()
                 else:
                     s.play()
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_4:
+                wall_group.empty(), tiles_group.empty(), enemies_group.empty(), player_group.empty()
+                sound_playback('sounds/knopka.mp3', gromkost)
+                fade()
+                game()
             for but in btn:
                 but.handle_event(event)
+            reset_game.handle_event(event)
 
         i = -50 + WIDTH / 2 - 180
         for but in btn:
@@ -380,6 +379,9 @@ def pause():
             i += 180
             but.check_hover(pygame.mouse.get_pos())
             but.draw(screen)
+        reset_game.set_pos(WIDTH / 2 - 50)
+        reset_game.check_hover(pygame.mouse.get_pos())
+        reset_game.draw(screen)
 
         keys = pygame.key.get_pressed()
         if keys[pygame.K_RETURN]:
@@ -428,20 +430,16 @@ def main_menu():
                 sys.exit()
 
             if event.type == pygame.USEREVENT and event.button == play_button:
-                print('НАЖАТА КНОПКА "play_button"')
                 fade()
                 game()
 
             if event.type == pygame.USEREVENT and event.button == settings_button:
-                print('НАЖАТА КНОПКА "settings_button"')
                 fade()
                 settings_menu()
 
             if event.type == pygame.USEREVENT and event.button == store_button:
-                print('НАЖАТА КНОПКА "store_button"')
-
+                print('Нажата кнопка store_button')
             if event.type == pygame.USEREVENT and event.button == quit_button:
-                print('НАЖАТА КНОПКА "quit_button"')
                 running = False
                 pygame.quit()
                 sys.exit()
@@ -493,17 +491,14 @@ def settings_menu():
                 main_menu()
 
             if event.type == pygame.USEREVENT and event.button == audio_button:
-                print('Нажата кнопка "audio_button"')
                 sound_settings()
                 fade()
 
             if event.type == pygame.USEREVENT and event.button == back_button:
-                print('НАЖАТА КНОПКА "back_button"')
                 fade()
                 main_menu()
 
             if event.type == pygame.USEREVENT and event.button == video_button:
-                print('НАЖАТА КНОПКА "video_button"')
                 fade()
                 video_settings()
 
@@ -564,25 +559,21 @@ def video_settings():
                 settings_menu()
 
             if event.type == pygame.USEREVENT and event.button == video1_button:
-                print('НАЖАТА КНОПКА "video1_button"')
                 change_video_mode(1068, 600)
                 fade()
                 running = False
 
             if event.type == pygame.USEREVENT and event.button == video2_button:
-                print('НАЖАТА КНОПКА "video2_button"')
                 change_video_mode(1424, 800)
                 fade()
                 running = False
 
             if event.type == pygame.USEREVENT and event.button == video3_button:
-                print('НАЖАТА КНОПКА "video3_button (FULL HD)"')
                 change_video_mode(1920, 1080, pygame.FULLSCREEN)
                 fade()
                 running = False
 
             if event.type == pygame.USEREVENT and event.button == video_back_button:
-                print('НАЖАТА КНОПКА "video_back_button"')
                 fade()
                 settings_menu()
 
@@ -601,6 +592,7 @@ def video_settings():
 
 
 def sound_settings():
+    global gromkost
     # Создание кнопок громкости
     sound1_button = ImageButton(WIDTH / 2 - (252 / 2), HEIGHT / 2, 20, 20, "",
                                 "data/sound_not_press.png",
@@ -667,24 +659,34 @@ def sound_settings():
                 settings_menu()
 
             if event.type == pygame.USEREVENT and event.button == sound1_button:
+                gromkost = 0.1
                 s.set_volume(0.1)
             if event.type == pygame.USEREVENT and event.button == sound2_button:
+                gromkost = 0.2
                 s.set_volume(0.2)
             if event.type == pygame.USEREVENT and event.button == sound3_button:
+                gromkost = 0.3
                 s.set_volume(0.3)
             if event.type == pygame.USEREVENT and event.button == sound4_button:
+                gromkost = 0.4
                 s.set_volume(0.4)
             if event.type == pygame.USEREVENT and event.button == sound5_button:
+                gromkost = 0.5
                 s.set_volume(0.5)
             if event.type == pygame.USEREVENT and event.button == sound6_button:
+                gromkost = 0.6
                 s.set_volume(0.6)
             if event.type == pygame.USEREVENT and event.button == sound7_button:
+                gromkost = 0.7
                 s.set_volume(0.7)
             if event.type == pygame.USEREVENT and event.button == sound8_button:
+                gromkost = 0.8
                 s.set_volume(0.8)
             if event.type == pygame.USEREVENT and event.button == sound9_button:
+                gromkost = 0.9
                 s.set_volume(0.9)
             if event.type == pygame.USEREVENT and event.button == sound10_button:
+                gromkost = 1.0
                 s.set_volume(1.0)
 
             for but in btn_list:
@@ -781,7 +783,7 @@ def fade():
         fade_surface.set_alpha(fade_alpha)
         screen.blit(fade_surface, (0, 0))
 
-        fade_alpha += 5
+        fade_alpha += 2
         if fade_alpha >= 105:
             fade_alpha = 255
             running = False
