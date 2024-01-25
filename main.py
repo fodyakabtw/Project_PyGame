@@ -59,7 +59,6 @@ tile_images = {'wall': load_image('wall.png'), 'empty': load_image('grass.png'),
                '4': load_image('bottom_wall.png'), '5': load_image('lower_right_corner.png'),
                '6': load_image('right_wall.png'), '7': load_image('upper_right_corner.png'),
                '8': load_image('top_wall.png'), 't': load_image('tree.png')}
-player_image = load_image('cat.png')
 enemies_images = {'s': load_image('slime_idle.png')}
 tile_width = tile_height = 200
 move_up = [load_image('up/up1.png'), load_image('up/up2.png'), load_image('up/up3.png'),
@@ -351,7 +350,7 @@ def main_menu():
             if event.type == pygame.USEREVENT and event.button == play_button:
                 print('НАЖАТА КНОПКА "play_button"')
                 fade()
-                game()
+                battle()
 
             if event.type == pygame.USEREVENT and event.button == settings_button:
                 print('НАЖАТА КНОПКА "settings_button"')
@@ -548,6 +547,7 @@ def new_game():
 
 
 def game():
+    screen.fill((0, 0, 0))
     screen1 = pygame.display.set_mode((WIDTH, HEIGHT))
     player, level_x, level_y = generate_level(load_level('lvl1.txt'))
     running = True
@@ -595,54 +595,150 @@ def fade():
 
         pygame.display.flip()
         clock.tick(FPS)
+        
+        
+class Fighter():
+    def __init__(self, name, x, y, max_hp, strenght, n1, n2):
+        self.name = name
+        self.pos = x, y
+        self.max_hp = max_hp
+        self.strenght = strenght
+        self.update_time = pygame.time.get_ticks()
+        self.hp = max_hp
+        self.state = 0
+        self.frames = []
+        self.frame_ind = 0
+        self.states = []
+
+        # load idle images
+        self.idle = []
+        for i in range(1, n1 + 1):
+            self.idle.append(load_image(f'{self.name}/idle/idle{i}.png'))
+        self.states.append(self.idle)
+
+        # load loss hp images
+        self.hp_loss = []
+        for i in range(1, n2 + 1):
+            self.hp_loss.append(load_image(f'{self.name}/HP_loss/HP_loss{i}.png'))
+        self.states.append(self.hp_loss)
+
+        # different mobs attack differently, so we add them separately
+        if self.name == 'cat':
+            # load sword attack
+            self.attack_sword = []
+            for i in range(1, 9):
+                self.attack_sword.append(load_image(f'{self.name}/sword_attack'
+                                                    f'/attack_sword{i}.png'))
+            self.states.append(self.attack_sword)
+
+            # load bow attack
+            self.attack_bow = []
+            for i in range(1, 6):
+                self.attack_bow.append(load_image(f'{self.name}/bow_attack/attack_bow{i}.png'))
+            self.states.append(self.attack_bow)
+
+        if self.name == 'slime':
+            # load attack
+            self.attack = []
+            for i in range(1, 10):
+                self.attack.append(load_image(f'{self.name}/slime_attack/slime_attack{i}.png'))
+            self.states.append(self.attack)
+
+        self.image = self.states[self.state][self.frame_ind]
+        self.alive = True
+        self.rect = self.image.get_rect()
+        self.attack = False
+
+    def draw(self):
+        screen.blit(self.image, self.pos)
+
+    def update(self):
+        animation_cooldown = 100
+
+        self.image = self.states[self.state][self.frame_ind]
+
+        if self.state != 0 and self.frame_ind == len(self.states[self.state]) - 1:
+            self.frame_ind = 0
+            self.state = 0
+            self.attack = False
+
+        # has enough time passed since the last picture update
+        if pygame.time.get_ticks() - self.update_time > animation_cooldown:
+            self.update_time = pygame.time.get_ticks()
+            self.frame_ind = (self.frame_ind + 1) % len(self.states[self.state])
 
 
 def battle():
     screen2 = pygame.display.set_mode(SIZE)
     run = True
+
+    # pseudo buttons
     bow_img = load_image("bow.png")
     numbs = [load_image("one.png"), load_image("two.png")]
     health = load_image("100hp.png")
+    mana = load_image("6mana.png")
     bow_btn = ImageButton(220, 40, 80, 80, "",
                           'data/bow.png')
     sword_img = load_image("sword.png")
     sword_btn = ImageButton(320, 40, 80, 80, "",
                             'data/sword.png')
     btns = [bow_btn, sword_btn]
+
+    # health image
+    health = load_image("100hp.png")
+    health_enemy = load_image("100hp_rotate.png")
+
+    # mana image
+    mana = load_image("6mana.png")
+
+    # background image
     background = pygame.image.load(change_size(SIZE, 'data/battle_background.png'))
+
+    # cat and mob
+    cat = Fighter('cat', 350, 350, 100, 20, 12, 3)
+    slime = Fighter('slime', 550, 300, 50, 10, 5, 6)
+
     clock = pygame.time.Clock()
-    player_idle = AnimatedSprite(load_image('idle.png'), 12, 1, 160, 250, 'player')
-    slime_idle = AnimatedSprite(load_image('slime_idle.png'), 5, 1, 480, 210, 'slime')
+
     while run:
-        clock.tick(10)
+        # draw background
+        screen2.blit(background, (0, 0))
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_2 and not player_idle.attack:
-                player_idle.frames = []
-                player_idle.cut_sheet(load_image('attack_sword.png'), 8, 1)
-                player_idle.rect = player_idle.rect.move(160, 250)
-                player_idle.cur_frame = 0
-                player_idle.attack = True
-                slime_idle.frames = []
-                slime_idle.cut_sheet(load_image('slime_attack.png'), 9, 1)
-                slime_idle.rect = player_idle.rect.move(320, -35)
-                slime_idle.cur_frame = 0
-                slime_idle.attack = True
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_1 and not player_idle.attack:
-                player_idle.frames = []
-                player_idle.cut_sheet(load_image('attack_bow.png'), 5, 1)
-                player_idle.rect = player_idle.rect.move(160, 250)
-                player_idle.cur_frame = 0
-                player_idle.attack = True
-        screen2.blit(background, (0, 0))
+                all_sprites.empty()
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_1 and not cat.attack:
+                cat.frame_ind = 0
+                cat.state = 3
+                cat.attack = True
+                slime.state = 1
+                slime.frame_ind = 0
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_2 and not cat.attack:
+                cat.frame_ind = 0
+                cat.state = 2
+                cat.attack = True
+                slime.state = 1
+                slime.frame_ind = 0
+
+        # draw mana and health
         screen2.blit(health, (10, 40))
+        screen2.blit(mana, (10, 115))
+        screen2.blit(health_enemy, (1040, 40))
+
         for btn in btns:
             btn.draw(screen2)
         k = 0
         for element in numbs:
             screen2.blit(element, (220 + k, 120))
             k += 100
+
+        cat.update()
+        cat.draw()
+
+        slime.update()
+        slime.draw()
+
         all_sprites.draw(screen2)
         all_sprites.update()
         pygame.display.flip()
