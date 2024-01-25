@@ -125,6 +125,7 @@ class AnimatedSprite(pygame.sprite.Sprite):
         self.pos = x, y
         self.image = self.frames[self.cur_frame]
         self.rect = self.rect.move(x, y)
+        self.mask = pygame.mask.from_surface(self.image)
 
     def cut_sheet(self, sheet, columns, rows):
         self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
@@ -176,19 +177,33 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = tile_width * pos_x + 13, tile_height * pos_y + 5
         self.status = ''
-        self.mask = pygame.mask.from_surface(self.image)
         self.hero_image_number_up = 0
         self.hero_image_number_down = 0
         self.hero_image_number_right = 0
         self.hero_image_number_left = 0
+        self.mask = pygame.mask.from_surface(self.image)
 
     def move(self, x, y):
+        # Сохраняем текущую позицию
+        current_pos = self.rect.topleft
+
+        # Двигаем спрайт
         self.rect = self.rect.move(x, y)
         self.pos_x, self.pos_y = self.pos_x + x, self.pos_y + y
-        if (pygame.sprite.spritecollideany(self, wall_group) or
-                pygame.sprite.spritecollideany(self, enemies_group)):
-            self.rect = self.rect.move(-x, -y)
-            self.pos_x, self.pos_y = self.pos_x - x, self.pos_y - y
+
+        # Проверяем столкновения с группой стен
+        wall_collision = pygame.sprite.spritecollideany(self, wall_group)
+        if wall_collision and pygame.sprite.collide_mask(self, wall_collision):
+            # Если есть столкновение со стеной, возвращаемся на предыдущую позицию
+            self.rect.topleft = current_pos
+            self.pos_x, self.pos_y = current_pos
+
+        # Проверяем столкновения с группой врагов
+        enemy_collision = pygame.sprite.spritecollideany(self, enemies_group)
+        if enemy_collision and pygame.sprite.collide_mask(self, enemy_collision):
+            # Если есть столкновение с врагом, возвращаемся на предыдущую позицию
+            self.rect.topleft = current_pos
+            self.pos_x, self.pos_y = current_pos
 
     def input(self):
         self.status = False
