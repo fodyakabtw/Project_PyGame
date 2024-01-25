@@ -159,6 +159,7 @@ class Tile(pygame.sprite.Sprite):
         self.image = tile_images[tile_type]
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = tile_width * pos_x, tile_height * pox_y
+        self.mask = pygame.mask.from_surface(self.image)
 
 
 class Wall(pygame.sprite.Sprite):
@@ -195,6 +196,11 @@ class Player(pygame.sprite.Sprite):
         wall_collision = pygame.sprite.spritecollideany(self, wall_group)
         if wall_collision and pygame.sprite.collide_mask(self, wall_collision):
             # Если есть столкновение со стеной, возвращаемся на предыдущую позицию
+            self.rect.topleft = current_pos
+            self.pos_x, self.pos_y = current_pos
+
+        # Проверяем столкновения с группой стен
+        if pygame.sprite.spritecollideany(self, wall_group):
             self.rect.topleft = current_pos
             self.pos_x, self.pos_y = current_pos
 
@@ -433,6 +439,10 @@ def main_menu():
                               "data/quit.png",
                               "data/qui_hovert.png",
                               "sounds/knopka.mp3")
+    game_name = ImageButton(WIDTH / 2 - (960 / 2), 0, 960, 150, "",
+                              "data/game_name.png",
+                              "data/game_name.png",
+                              "sounds/knopka.mp3")
     btn = [play_button, settings_button, store_button, quit_button]  # Добавление кнопок в список
     running = True
     while running:
@@ -466,6 +476,8 @@ def main_menu():
             but.set_pos(WIDTH / 2 - (252 / 2))
             but.check_hover(pygame.mouse.get_pos())
             but.draw(screen)
+        game_name.set_pos(WIDTH / 2 - (960 / 2))
+        game_name.draw(screen)
 
         # Отрисовка курсора в текущей позиции мыши !нужно делать в каждой фукнции перед флипом!
         x, y = pygame.mouse.get_pos()
@@ -752,6 +764,10 @@ def new_game():
 
 def game():
     screen1 = pygame.display.set_mode((WIDTH, HEIGHT))
+    if WIDTH == 1920 and HEIGHT == 1080:
+        change_video_mode(1920, 1080, pygame.FULLSCREEN)
+    else:
+        change_video_mode(WIDTH, HEIGHT)
     player, level_x, level_y = generate_level(load_level('lvl1.txt'))
     running = True
     while running:
