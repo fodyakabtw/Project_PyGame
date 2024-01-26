@@ -274,6 +274,7 @@ def generate_level(level):
                                tile_height * y, "slime")
             elif level[y][x] in ['a', '1', '2', '3', '4', '5', '6', '7', '8', 't']:
                 if level[y][x] == 't':
+                    print(1)
                     Tile('.', x, y)
                     Wall(level[y][x], x, y)
                 else:
@@ -816,7 +817,6 @@ def game():
             camera.apply(sprite)
         tiles_group.draw(screen1)
         wall_group.draw(screen1)
-        tiles_group.draw(screen1)
         enemies_group.draw(screen1)
         enemies_group.update()
         player_group.draw(screen1)
