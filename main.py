@@ -12,6 +12,7 @@ all_sprites = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
 enemies_group = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
+tree_group = pygame.sprite.Group()
 wall_group = pygame.sprite.Group()
 STEP = 50
 
@@ -195,6 +196,16 @@ class Wall(pygame.sprite.Sprite):
         self.image = tile_images[tile_type]
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = tile_width * pos_x, tile_height * pos_y
+        self.mask = pygame.mask.from_surface(self.image)
+
+
+class Tree(pygame.sprite.Sprite):
+    def __init__(self, tile_type, pos_x, pos_y):
+        super().__init__(tree_group, all_sprites)
+        self.image = tile_images[tile_type]
+        self.rect = self.image.get_rect()
+        self.rect.x, self.rect.y = tile_width * pos_x, tile_height * pos_y
+        self.mask = pygame.mask.from_surface(self.image)
 
 
 class Player(pygame.sprite.Sprite):
@@ -233,6 +244,13 @@ class Player(pygame.sprite.Sprite):
 
         # Проверяем столкновения с группой стен
         if pygame.sprite.spritecollideany(self, wall_group):
+            self.rect = self.rect.move(-x, -y)
+            self.pos_x, self.pos_y = current_pos
+
+
+        tree_collision = pygame.sprite.spritecollideany(self, tree_group)
+        if tree_collision and pygame.sprite.collide_mask(self, tree_collision):
+            # Если есть столкновение с деревом, возвращаемся на предыдущую позицию
             self.rect = self.rect.move(-x, -y)
             self.pos_x, self.pos_y = current_pos
 
@@ -298,7 +316,7 @@ def generate_level(level):
             elif level[y][x] in ['a', '1', '2', '3', '4', '5', '6', '7', '8', 't']:
                 if level[y][x] == 't':
                     Tile('.', x, y)
-                    Wall(level[y][x], x, y)
+                    Tree(level[y][x], x, y)
                 else:
                     Wall(level[y][x], x, y)
             elif level[y][x] == '@':
@@ -397,15 +415,20 @@ def pause():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 quit()
+
             if event.type == pygame.KEYDOWN and event.key == pygame.K_1:
                 wall_group.empty(), tiles_group.empty(), enemies_group.empty(), player_group.empty()
                 sound_playback('sounds/knopka.mp3', gromkost)
                 fade()
+                wall_group.empty(), tiles_group.empty(), enemies_group.empty(), player_group.empty()
+                tree_group.empty()
                 main_menu()
+
                 paused = False
             if event.type == pygame.KEYDOWN and event.key == pygame.K_2:
                 sound_playback('sounds/knopka.mp3', gromkost)
                 paused = False
+
             if event.type == pygame.KEYDOWN and event.key == pygame.K_3:
                 sound_playback('sounds/knopka.mp3', gromkost)
                 flag_enable_sound = not flag_enable_sound
@@ -413,11 +436,14 @@ def pause():
                     s.stop()
                 else:
                     s.play()
+
             if event.type == pygame.KEYDOWN and event.key == pygame.K_4:
                 wall_group.empty(), tiles_group.empty(), enemies_group.empty(), player_group.empty()
+                tree_group.empty()
                 sound_playback('sounds/knopka.mp3', gromkost)
                 fade()
                 game()
+
             for but in btn:
                 but.handle_event(event)
             reset_game.handle_event(event)
@@ -506,7 +532,7 @@ def main_menu():
                 settings_menu()
 
             if event.type == pygame.USEREVENT and event.button == store_button:
-                print('Нажата кнопка store_button')
+                print('В РАЗРАБОТКЕ!!!')
 
             if event.type == pygame.USEREVENT and event.button == quit_button:
                 running = False
@@ -787,7 +813,6 @@ def game():
     level = lvl
     running = True
     while running:
-        screen.fill((0, 0, 0))
         keys = pygame.key.get_pressed()
         if keys[pygame.K_ESCAPE]:
             pause()
@@ -795,6 +820,7 @@ def game():
             if event.type == pygame.QUIT:
                 running = False
                 wall_group.empty(), tiles_group.empty(), enemies_group.empty(), player_group.empty()
+                tree_group.empty()
                 main_menu()
         player.input()
         player.update(player.get_status())
@@ -804,6 +830,7 @@ def game():
             camera.apply(sprite)
         tiles_group.draw(screen1)
         wall_group.draw(screen1)
+        tree_group.draw(screen1)
         enemies_group.draw(screen1)
         enemies_group.update()
         player_group.draw(screen1)
@@ -855,6 +882,8 @@ def result(res):
     pygame.display.flip()
     time.sleep(3)
     fade()
+    wall_group.empty(), tiles_group.empty(), enemies_group.empty(), player_group.empty()
+    tree_group.empty()
     game()
 
 
