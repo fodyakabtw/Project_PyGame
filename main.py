@@ -321,7 +321,7 @@ class ImageButton:  # Воспомогательный класс для заг�
     def check_hover(self, mouse_pos):  # Если если столкновение mouse_pos с кнопкой, то True
         self.is_hovered = self.rect.collidepoint(mouse_pos)
 
-    def handle_event(self, event):  # Отслеживание нажатия кнопки меню
+    def handle_event(self, event):  # Отслеживание нажатия кнопки
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.is_hovered:
             if self.sound:
                 self.sound.play()
@@ -363,7 +363,11 @@ def pause():
                              "data/reset_game.png",
                              "data/reset_game.png",
                              "sounds/knopka.mp3")
-    btn = [return_to_menu, continue_play, enable_sound]
+    disable_sound = ImageButton(WIDTH / 2 - (160 / 2), 200, 160, 160, "",
+                                "data/disable_sound.png",
+                                "data/disable_sound.png",
+                                "sounds/knopka.mp3")
+    btn = [return_to_menu, continue_play]
     while paused:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -394,15 +398,30 @@ def pause():
                 but.handle_event(event)
             reset_game.handle_event(event)
 
+            if flag_enable_sound:
+                disable_sound.handle_event(event)
+            else:
+                enable_sound.handle_event(event)
+
         i = -50 + WIDTH / 2 - 180
         for but in btn:
             but.set_pos(i)
             i += 180
             but.check_hover(pygame.mouse.get_pos())
             but.draw(screen)
+
         reset_game.set_pos(WIDTH / 2 - 50)
         reset_game.check_hover(pygame.mouse.get_pos())
         reset_game.draw(screen)
+
+        if flag_enable_sound:
+            disable_sound.set_pos(WIDTH / 2 + 130)
+            disable_sound.check_hover(pygame.mouse.get_pos())
+            disable_sound.draw(screen)
+        else:
+            enable_sound.set_pos(WIDTH / 2 + 130)
+            enable_sound.check_hover(pygame.mouse.get_pos())
+            enable_sound.draw(screen)
 
         keys = pygame.key.get_pressed()
         if keys[pygame.K_RETURN]:
@@ -440,9 +459,9 @@ def main_menu():
                               "data/qui_hovert.png",
                               "sounds/knopka.mp3")
     game_name = ImageButton(WIDTH / 2 - (960 / 2), 0, 960, 150, "",
-                              "data/game_name.png",
-                              "data/game_name.png",
-                              "sounds/knopka.mp3")
+                            "data/game_name.png",
+                            "data/game_name.png",
+                            "sounds/knopka.mp3")
     btn = [play_button, settings_button, store_button, quit_button]  # Добавление кнопок в список
     running = True
     while running:
