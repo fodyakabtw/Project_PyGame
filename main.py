@@ -1,9 +1,11 @@
 import time
 import pygame
+import pygame.mixer
 import sys
 import os
 from PIL import Image
 
+pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=512, devicename=None)
 pygame.init()
 
 
@@ -14,28 +16,35 @@ def change_size(size, name):
     return name
 
 
+# Воспомогательная функция воспроизведения звуков.
+def sound_playback(file, volume=0.4, flagstoporpause=False):
+    global gromkost
+    volume = gromkost
+    s = pygame.mixer.Sound(file)
+    s.set_volume(volume)
+    pygame.mixer.music.rewind()
+    if flagstoporpause:
+        s.stop()
+    else:
+        s.set_volume(volume)
+        pygame.mixer.music.rewind()
+        s.play()
+
+
 SIZE = WIDTH, HEIGHT = 1280, 800
 FPS = 60
 clock = pygame.time.Clock()
 screen = pygame.display.set_mode(SIZE)
+s = pygame.mixer.Sound('sounds/music_fon.wav')
+s.set_volume(0.4)
+s.play(loops=-1)
 pygame.display.set_icon(pygame.image.load('data/icon.png'))
 background_image = pygame.image.load(change_size(SIZE, 'data/background.png'))
 pygame.display.set_caption('The Legend of a Kingdom')
 # Загрузка и установка своего курсора
 cursor = pygame.image.load("data/cursor.png")
 pygame.mouse.set_visible(False)
-
-
-def pause():
-    print("ПАУЗА")
-    paused = True
-    while paused:
-        for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                paused = False
-
-    pygame.display.update()
-    clock.tick(15)
+gromkost = 1.0
 
 
 def load_image(name, colorkey=None):
@@ -121,6 +130,7 @@ class AnimatedSprite(pygame.sprite.Sprite):
         self.pos = x, y
         self.image = self.frames[self.cur_frame]
         self.rect = self.rect.move(x, y)
+        self.mask = pygame.mask.from_surface(self.image)
 
     def cut_sheet(self, sheet, columns, rows):
         self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
@@ -154,6 +164,7 @@ class Tile(pygame.sprite.Sprite):
         self.image = tile_images[tile_type]
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = tile_width * pos_x, tile_height * pox_y
+        self.mask = pygame.mask.from_surface(self.image)
 
 
 class Wall(pygame.sprite.Sprite):
@@ -176,14 +187,34 @@ class Player(pygame.sprite.Sprite):
         self.hero_image_number_down = 0
         self.hero_image_number_right = 0
         self.hero_image_number_left = 0
+        self.mask = pygame.mask.from_surface(self.image)
 
     def move(self, x, y):
+        # Сохраняем текущую позицию
+        current_pos = self.rect.topleft
+
+        # Двигаем спрайт
         self.rect = self.rect.move(x, y)
         self.pos_x, self.pos_y = self.pos_x + x, self.pos_y + y
-        if (pygame.sprite.spritecollideany(self, wall_group) or
-                pygame.sprite.spritecollideany(self, enemies_group)):
-            self.rect = self.rect.move(-x, -y)
-            self.pos_x, self.pos_y = self.pos_x - x, self.pos_y - y
+
+        # Проверяем столкновения с группой стен
+        wall_collision = pygame.sprite.spritecollideany(self, wall_group)
+        if wall_collision and pygame.sprite.collide_mask(self, wall_collision):
+            # Если есть столкновение со стеной, возвращаемся на предыдущую позицию
+            self.rect.topleft = current_pos
+            self.pos_x, self.pos_y = current_pos
+
+        # Проверяем столкновения с группой стен
+        if pygame.sprite.spritecollideany(self, wall_group):
+            self.rect.topleft = current_pos
+            self.pos_x, self.pos_y = current_pos
+
+        # Проверяем столкновения с группой врагов
+        enemy_collision = pygame.sprite.spritecollideany(self, enemies_group)
+        if enemy_collision and pygame.sprite.collide_mask(self, enemy_collision):
+            # Если есть столкновение с врагом, возвращаемся на предыдущую позицию
+            self.rect.topleft = current_pos
+            self.pos_x, self.pos_y = current_pos
 
     def input(self):
         self.status = False
@@ -262,22 +293,6 @@ camera = Camera()
 STEP = 50
 
 
-def load_image(name, colorkey=None):
-    fullname = os.path.join('data', name)
-    if not os.path.isfile(fullname):
-        print(f"Файл с изображением {fullname} не найден")
-        sys.exit()
-    image = pygame.image.load(fullname)
-    if colorkey is not None:
-        image = image.convert()
-        if colorkey == -1:
-            colorkey = image.get_at((0, 0))
-        image.set_colorkey(colorkey)
-    else:
-        image = image.convert_alpha()
-    return image
-
-
 class ImageButton:  # Воспомогательный класс для загрузки кнопок на основное окно
     def __init__(self, x, y, width, height, text, image_path, hover_image_path=None,
                  sound_path=None):
@@ -315,11 +330,114 @@ class ImageButton:  # Воспомогательный класс для заг�
     def check_hover(self, mouse_pos):  # Если если столкновение mouse_pos с кнопкой, то True
         self.is_hovered = self.rect.collidepoint(mouse_pos)
 
-    def handle_event(self, event):  # Отслеживание нажатия кнопки меню
+    def handle_event(self, event):  # Отслеживание нажатия кнопки
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.is_hovered:
             if self.sound:
                 self.sound.play()
             pygame.event.post(pygame.event.Event(pygame.USEREVENT, button=self))
+
+
+# Функция вывода любого текста на экран
+def print_text(mess, x, y, font_color=(0, 0, 0), font_type='Arial Black', font_size=30):
+    font_type = pygame.font.Font(None, font_size)
+    text = font_type.render(mess, True, font_color)
+    screen.blit(text, (x, y))
+
+
+flag_enable_sound = False
+
+
+# Функция паузы
+def pause():
+    global flag_enable_sound, gromkost
+    paused = True
+    print("Нажмите клавишу 1 для того, чтобы вернуться в главное меню!")
+    print("Нажмите клавишу 2 для того, чтобы продолжить игру!")
+    print("Нажмите клавишу 3 для того, чтобы выключить музыку!")
+    print("Нажмите клавишу 4 для того, чтобы начать игру заново!")
+    # Создание кнопок:
+    return_to_menu = ImageButton(WIDTH / 2 - (160 / 2), 200, 160, 160, "",
+                                 "data/return_to_menu.png",
+                                 "data/return_to_menu.png",
+                                 "sounds/knopka.mp3")
+    continue_play = ImageButton(WIDTH / 2 - (160 / 2), 200, 160, 160, "",
+                                "data/continue.png",
+                                "data/continue.png",
+                                "sounds/knopka.mp3")
+    enable_sound = ImageButton(WIDTH / 2 - (160 / 2), 200, 160, 160, "",
+                               "data/enable_sound.png",
+                               "data/enable_sound.png",
+                               "sounds/knopka.mp3")
+    reset_game = ImageButton(WIDTH / 2 - (160 / 2), 380, 160, 160, "",
+                             "data/reset_game.png",
+                             "data/reset_game.png",
+                             "sounds/knopka.mp3")
+    disable_sound = ImageButton(WIDTH / 2 - (160 / 2), 200, 160, 160, "",
+                                "data/disable_sound.png",
+                                "data/disable_sound.png",
+                                "sounds/knopka.mp3")
+    btn = [return_to_menu, continue_play]
+    while paused:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_1:
+                wall_group.empty(), tiles_group.empty(), enemies_group.empty(), player_group.empty()
+                sound_playback('sounds/knopka.mp3', gromkost)
+                fade()
+                main_menu()
+                paused = False
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_2:
+                sound_playback('sounds/knopka.mp3', gromkost)
+                paused = False
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_3:
+                sound_playback('sounds/knopka.mp3', gromkost)
+                flag_enable_sound = not flag_enable_sound
+                if flag_enable_sound:
+                    s.stop()
+                else:
+                    s.play()
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_4:
+                wall_group.empty(), tiles_group.empty(), enemies_group.empty(), player_group.empty()
+                sound_playback('sounds/knopka.mp3', gromkost)
+                fade()
+                game()
+            for but in btn:
+                but.handle_event(event)
+            reset_game.handle_event(event)
+
+            if flag_enable_sound:
+                disable_sound.handle_event(event)
+            else:
+                enable_sound.handle_event(event)
+
+        i = -50 + WIDTH / 2 - 180
+        for but in btn:
+            but.set_pos(i)
+            i += 180
+            but.check_hover(pygame.mouse.get_pos())
+            but.draw(screen)
+
+        reset_game.set_pos(WIDTH / 2 - 50)
+        reset_game.check_hover(pygame.mouse.get_pos())
+        reset_game.draw(screen)
+
+        if flag_enable_sound:
+            disable_sound.set_pos(WIDTH / 2 + 130)
+            disable_sound.check_hover(pygame.mouse.get_pos())
+            disable_sound.draw(screen)
+        else:
+            enable_sound.set_pos(WIDTH / 2 + 130)
+            enable_sound.check_hover(pygame.mouse.get_pos())
+            enable_sound.draw(screen)
+
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_RETURN]:
+            paused = False
+
+        pygame.display.update()
+        clock.tick(15)
 
 
 # Воспомогательная функция изменения разрешения окна игры.
@@ -334,7 +452,8 @@ def change_video_mode(w, h, fullscreen=0):
 def main_menu():
     # Кнопки
     play_button = ImageButton(WIDTH / 2 - (252 / 2), 175, 252, 75, "",
-                              "data/start.png", "data/start_hover.png",
+                              "data/start.png",
+                              "data/start_hover.png",
                               "sounds/knopka.mp3")
     settings_button = ImageButton(WIDTH / 2 - (252 / 2), 250, 252, 74, "",
                                   "data/settings.png",
@@ -342,10 +461,16 @@ def main_menu():
                                   "sounds/knopka.mp3")
     store_button = ImageButton(WIDTH / 2 - (252 / 2), 325, 252, 74, "",
                                "data/store.png",
-                               "data/store_hover.png", "sounds/knopka.mp3")
+                               "data/store_hover.png",
+                               "sounds/knopka.mp3")
     quit_button = ImageButton(WIDTH / 2 - (252 / 2), 400, 252, 74, "",
                               "data/quit.png",
-                              "data/qui_hovert.png", "sounds/knopka.mp3")
+                              "data/qui_hovert.png",
+                              "sounds/knopka.mp3")
+    game_name = ImageButton(WIDTH / 2 - (960 / 2), 0, 960, 150, "",
+                            "data/game_name.png",
+                            "data/game_name.png",
+                            "sounds/knopka.mp3")
     btn = [play_button, settings_button, store_button, quit_button]  # Добавление кнопок в список
     running = True
     while running:
@@ -366,7 +491,7 @@ def main_menu():
                 settings_menu()
 
             if event.type == pygame.USEREVENT and event.button == store_button:
-                ...
+                print('Нажата кнопка store_button')
 
             if event.type == pygame.USEREVENT and event.button == quit_button:
                 running = False
@@ -380,6 +505,8 @@ def main_menu():
             but.set_pos(WIDTH / 2 - (252 / 2))
             but.check_hover(pygame.mouse.get_pos())
             but.draw(screen)
+        game_name.set_pos(WIDTH / 2 - (960 / 2))
+        game_name.draw(screen)
 
         # Отрисовка курсора в текущей позиции мыши !нужно делать в каждой фукнции перед флипом!
         x, y = pygame.mouse.get_pos()
@@ -390,15 +517,18 @@ def main_menu():
 
 def settings_menu():
     # Создание кнопок
-    audio_button = ImageButton(WIDTH / 2 - (252 / 2), 175, 252, 74, "Звук",
-                               "data/back.png",
-                               "data/back_border.png", "sounds/knopka.mp3")
-    video_button = ImageButton(WIDTH / 2 - (252 / 2), 249, 252, 75, "Графика",
-                               "data/back.png",
-                               "data/back_border.png", "sounds/knopka.mp3")
-    back_button = ImageButton(WIDTH / 2 - (252 / 2), 324, 252, 75, "Назад",
+    audio_button = ImageButton(WIDTH / 2 - (252 / 2), 175, 252, 74, "",
+                               "data/sound.png",
+                               "data/sound_hover.png",
+                               "sounds/knopka.mp3")
+    video_button = ImageButton(WIDTH / 2 - (252 / 2), 249, 252, 75, "",
+                               "data/video.png",
+                               "data/video_hover.png",
+                               "sounds/knopka.mp3")
+    back_button = ImageButton(WIDTH / 2 - (252 / 2), 324, 252, 75, "",
                               "data/back.png",
-                              "data/back_border.png", "sounds/knopka.mp3")
+                              "data/back_hover.png",
+                              "sounds/knopka.mp3")
     btn = [audio_button, video_button, back_button]
 
     running = True
@@ -416,13 +546,15 @@ def settings_menu():
                 fade()
                 main_menu()
 
+            if event.type == pygame.USEREVENT and event.button == audio_button:
+                sound_settings()
+                fade()
+
             if event.type == pygame.USEREVENT and event.button == back_button:
-                print('НАЖАТА КНОПКА "back_button"')
                 fade()
                 main_menu()
 
             if event.type == pygame.USEREVENT and event.button == video_button:
-                print('НАЖАТА КНОПКА "video_button"')
                 fade()
                 video_settings()
 
@@ -443,22 +575,22 @@ def settings_menu():
 # Функция настроек графики. Выбор разрешения окна игры.
 def video_settings():
     # Создание кнопок:
-    video1_button = ImageButton(WIDTH / 2 - (252 / 2), 175, 175, 74, "960x600",
-                                "data/back.png",
-                                "data/back_border.png",
+    video1_button = ImageButton(WIDTH / 2 - (252 / 2), 175, 252, 74, "",
+                                "data/960X600.png",
+                                "data/960X600_hover.png",
                                 "sounds/knopka.mp3")
-    video2_button = ImageButton(WIDTH / 2 - (252 / 2), 249, 175, 74, "1280x800",
-                                "data/back.png",
-                                "data/back_border.png",
+    video2_button = ImageButton(WIDTH / 2 - (252 / 2), 249, 252, 74, "",
+                                "data/1280X800.png",
+                                "data/1280X800_hover.png",
                                 "sounds/knopka.mp3")
-    video3_button = ImageButton(WIDTH / 2 - (252 / 2), 323, 175, 74, "Full HD",
-                                "data/back.png",
-                                "data/back_border.png",
+    video3_button = ImageButton(WIDTH / 2 - (252 / 2), 323, 252, 74, "",
+                                "data/fullhd.png",
+                                "data/fullhd_hover.png",
                                 "sounds/knopka.mp3")
-    video_back_button = ImageButton(WIDTH / 2 - (252 / 2), 397, 175, 74,
-                                    "Назад",
+    video_back_button = ImageButton(WIDTH / 2 - (252 / 2), 397, 252, 74,
+                                    "",
                                     "data/back.png",
-                                    "data/back_border.png",
+                                    "data/back_hover.png",
                                     "sounds/knopka.mp3")
     btn = [video1_button, video2_button, video3_button, video_back_button]
     running = True
@@ -467,7 +599,7 @@ def video_settings():
         screen.blit(background_image, (0, 0))
 
         font = pygame.font.Font(None, 72)
-        text_surface = font.render("VIDEO SETTINGS", True, (255, 255, 255))
+        text_surface = font.render("", True, (255, 255, 255))
         text_rect = text_surface.get_rect(center=(WIDTH / 2, HEIGHT / 2))
         screen.blit(text_surface, text_rect)
 
@@ -516,7 +648,117 @@ def video_settings():
 
 
 def sound_settings():
-    pass
+    global gromkost
+    # Создание кнопок громкости
+    sound1_button = ImageButton(WIDTH / 2 - (252 / 2), HEIGHT / 2, 20, 20, "",
+                                "data/sound_not_press.png",
+                                "data/sound_press.png",
+                                "sounds/knopka.mp3")
+    sound2_button = ImageButton(WIDTH / 2 - (252 / 2), HEIGHT / 2, 20, 20, "",
+                                "data/sound_not_press.png",
+                                "data/sound_press.png",
+                                "sounds/knopka.mp3")
+    sound3_button = ImageButton(WIDTH / 2 - (252 / 2), HEIGHT / 2, 20, 20, "",
+                                "data/sound_not_press.png",
+                                "data/sound_press.png",
+                                "sounds/knopka.mp3")
+    sound4_button = ImageButton(WIDTH / 2 - (252 / 2), HEIGHT / 2, 20, 20, "",
+                                "data/sound_not_press.png",
+                                "data/sound_press.png",
+                                "sounds/knopka.mp3")
+    sound5_button = ImageButton(WIDTH / 2 - (252 / 2), HEIGHT / 2, 20, 20, "",
+                                "data/sound_not_press.png",
+                                "data/sound_press.png",
+                                "sounds/knopka.mp3")
+    sound6_button = ImageButton(WIDTH / 2 - (252 / 2), HEIGHT / 2, 20, 20, "",
+                                "data/sound_not_press.png",
+                                "data/sound_press.png",
+                                "sounds/knopka.mp3")
+    sound7_button = ImageButton(WIDTH / 2 - (252 / 2), HEIGHT / 2, 20, 20, "",
+                                "data/sound_not_press.png",
+                                "data/sound_press.png",
+                                "sounds/knopka.mp3")
+    sound8_button = ImageButton(WIDTH / 2 - (252 / 2), HEIGHT / 2, 20, 20, "",
+                                "data/sound_not_press.png",
+                                "data/sound_press.png",
+                                "sounds/knopka.mp3")
+    sound9_button = ImageButton(WIDTH / 2 - (252 / 2), HEIGHT / 2, 20, 20, "",
+                                "data/sound_not_press.png",
+                                "data/sound_press.png",
+                                "sounds/knopka.mp3")
+    sound10_button = ImageButton(WIDTH / 2 - (252 / 2), HEIGHT / 2, 20, 20, "",
+                                 "data/sound_not_press.png",
+                                 "data/sound_press.png",
+                                 "sounds/knopka.mp3")
+    btn_list = [sound1_button, sound2_button, sound3_button, sound4_button, sound5_button,
+                sound6_button, sound7_button, sound8_button, sound9_button, sound10_button]
+
+    running = True
+    while running:
+        screen.fill((0, 0, 0))
+        screen.blit(background_image, (0, 0))
+
+        font = pygame.font.Font(None, 72)
+        text_surface = font.render("Sound:", True, (255, 255, 255))
+        text_rect = text_surface.get_rect(center=(0 + text_surface.get_width() / 2, HEIGHT / 2))
+        screen.blit(text_surface, text_rect)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+                pygame.quit()
+                sys.exit()
+
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                running = False
+                fade()
+                settings_menu()
+
+            if event.type == pygame.USEREVENT and event.button == sound1_button:
+                gromkost = 0.1
+                s.set_volume(0.1)
+            if event.type == pygame.USEREVENT and event.button == sound2_button:
+                gromkost = 0.2
+                s.set_volume(0.2)
+            if event.type == pygame.USEREVENT and event.button == sound3_button:
+                gromkost = 0.3
+                s.set_volume(0.3)
+            if event.type == pygame.USEREVENT and event.button == sound4_button:
+                gromkost = 0.4
+                s.set_volume(0.4)
+            if event.type == pygame.USEREVENT and event.button == sound5_button:
+                gromkost = 0.5
+                s.set_volume(0.5)
+            if event.type == pygame.USEREVENT and event.button == sound6_button:
+                gromkost = 0.6
+                s.set_volume(0.6)
+            if event.type == pygame.USEREVENT and event.button == sound7_button:
+                gromkost = 0.7
+                s.set_volume(0.7)
+            if event.type == pygame.USEREVENT and event.button == sound8_button:
+                gromkost = 0.8
+                s.set_volume(0.8)
+            if event.type == pygame.USEREVENT and event.button == sound9_button:
+                gromkost = 0.9
+                s.set_volume(0.9)
+            if event.type == pygame.USEREVENT and event.button == sound10_button:
+                gromkost = 1.0
+                s.set_volume(1.0)
+
+            for but in btn_list:
+                but.handle_event(event)
+        i = 0 + text_surface.get_width() + 10
+        for but in btn_list:
+            but.set_pos(i)
+            i += 20
+            but.check_hover(pygame.mouse.get_pos())
+            but.draw(screen)
+
+        x, y = pygame.mouse.get_pos()
+        screen.blit(cursor, (x, y))
+
+        pygame.display.flip()
+        clock.tick(FPS)
 
 
 def new_game():
@@ -550,18 +792,22 @@ def new_game():
 
 
 def game():
-    screen.fill((0, 0, 0))
     screen1 = pygame.display.set_mode((WIDTH, HEIGHT))
+    if WIDTH == 1920 and HEIGHT == 1080:
+        change_video_mode(1920, 1080, pygame.FULLSCREEN)
+    else:
+        change_video_mode(WIDTH, HEIGHT)
     player, level_x, level_y = generate_level(load_level('lvl1.txt'))
     running = True
     while running:
+        screen.fill((0, 0, 0))
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_ESCAPE]:
+            pause()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
                 wall_group.empty(), tiles_group.empty(), enemies_group.empty(), player_group.empty()
-                main_menu()
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                pause()
         player.input()
         player.update(player.get_status())
         camera.update(player)
@@ -570,10 +816,15 @@ def game():
             camera.apply(sprite)
         tiles_group.draw(screen1)
         wall_group.draw(screen1)
+        tiles_group.draw(screen1)
         enemies_group.draw(screen1)
         enemies_group.update()
         player_group.draw(screen1)
         clock.tick(15)
+
+        x, y = pygame.mouse.get_pos()
+        screen.blit(cursor, (x, y))
+
         pygame.display.flip()
 
 
@@ -592,10 +843,13 @@ def fade():
         fade_surface.set_alpha(fade_alpha)
         screen.blit(fade_surface, (0, 0))
 
-        fade_alpha += 5
+        fade_alpha += 2
         if fade_alpha >= 105:
             fade_alpha = 255
             running = False
+
+        x, y = pygame.mouse.get_pos()
+        screen.blit(cursor, (x, y))
 
         pygame.display.flip()
         clock.tick(FPS)
@@ -617,7 +871,7 @@ def result(res):
     fade()
     game()
 
-        
+
 class Fighter:
     def __init__(self, name, x, y, max_hp, strength, n1, n2):
         self.name = name
@@ -853,6 +1107,11 @@ def battle():
             k += 100
 
         pygame.display.flip()
+        all_sprites.draw(screen)
+        all_sprites.update()
+
+        x, y = pygame.mouse.get_pos()
+        screen.blit(cursor, (x, y))
 
 
 main_menu()
