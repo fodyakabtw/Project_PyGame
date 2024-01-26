@@ -274,7 +274,6 @@ def generate_level(level):
                                tile_height * y, "slime")
             elif level[y][x] in ['a', '1', '2', '3', '4', '5', '6', '7', '8', 't']:
                 if level[y][x] == 't':
-                    print(1)
                     Tile('.', x, y)
                     Wall(level[y][x], x, y)
                 else:
@@ -864,7 +863,6 @@ def result(res):
         x = 330
     y = 57
     pos = (WIDTH / 2 - x / 2), (HEIGHT / 2 - y / 2)
-    print(pos)
     screen.blit(image, pos)
     pygame.display.flip()
     time.sleep(3)
