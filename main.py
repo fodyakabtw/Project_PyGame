@@ -1,3 +1,4 @@
+import time
 import pygame
 import sys
 import os
@@ -53,12 +54,17 @@ def load_image(name, colorkey=None):
     return image
 
 
-tile_images = {'wall': load_image('wall.png'), 'empty': load_image('grass.png'),
+tile_images = {'wall': load_image('wall.png'), '.': load_image('grass.png'),
                'a': load_image('abroad.png'), '1': load_image('upper_left_corner.png'),
                '2': load_image('left_wall.png'), '3': load_image('lower_left_corner.png'),
                '4': load_image('bottom_wall.png'), '5': load_image('lower_right_corner.png'),
                '6': load_image('right_wall.png'), '7': load_image('upper_right_corner.png'),
-               '8': load_image('top_wall.png'), 't': load_image('tree.png')}
+               '8': load_image('top_wall.png'), 't': load_image('tree.png'),
+               'w': load_image('up_path.png'), 'd': load_image('right_path.png'),
+               'e': load_image('path_right_turn.png'), 'c': load_image('path_right_turn_s.png'),
+               'q': load_image('path_turn_l.png'), 'z': load_image('path_turn.png'),
+               'r': load_image('end_a_path.png'), 'y': load_image('end_d_path.png'),
+               'f': load_image('end_s_path.png'), 'g': load_image('end_w_path.png')}
 enemies_images = {'s': load_image('slime_idle.png')}
 tile_width = tile_height = 200
 move_up = [load_image('up/up1.png'), load_image('up/up2.png'), load_image('up/up3.png'),
@@ -229,16 +235,20 @@ def generate_level(level):
     new_player, x, y = None, None, None
     for y in range(len(level)):
         for x in range(len(level[y])):
-            if level[y][x] == '.':
-                Tile('empty', x, y)
+            if level[y][x] in ['.', 'w', 'd', 'e', 'c', 'q', 'z', 'r', 'y', 'f', 'g']:
+                Tile(level[y][x], x, y)
             elif level[y][x] == 's':
-                Tile('empty', x, y)
+                Tile('.', x, y)
                 AnimatedSprite(load_image('slime_idle.png'), 5, 1, tile_width * x,
                                tile_height * y, "slime")
             elif level[y][x] in ['a', '1', '2', '3', '4', '5', '6', '7', '8', 't']:
-                Wall(level[y][x], x, y)
+                if level[y][x] == 't':
+                    Tile('.', x, y)
+                    Wall(level[y][x], x, y)
+                else:
+                    Wall(level[y][x], x, y)
             elif level[y][x] == '@':
-                Tile('empty', x, y)
+                Tile('r', x, y)
                 new_player = Player(x, y)
     return new_player, x, y
 
@@ -348,20 +358,17 @@ def main_menu():
                 sys.exit()
 
             if event.type == pygame.USEREVENT and event.button == play_button:
-                print('НАЖАТА КНОПКА "play_button"')
                 fade()
-                battle()
+                game()
 
             if event.type == pygame.USEREVENT and event.button == settings_button:
-                print('НАЖАТА КНОПКА "settings_button"')
                 fade()
                 settings_menu()
 
             if event.type == pygame.USEREVENT and event.button == store_button:
-                print('НАЖАТА КНОПКА "store_button"')
+                ...
 
             if event.type == pygame.USEREVENT and event.button == quit_button:
-                print('НАЖАТА КНОПКА "quit_button"')
                 running = False
                 pygame.quit()
                 sys.exit()
@@ -476,25 +483,21 @@ def video_settings():
                 settings_menu()
 
             if event.type == pygame.USEREVENT and event.button == video1_button:
-                print('НАЖАТА КНОПКА "video1_button"')
                 change_video_mode(1068, 600)
                 fade()
                 running = False
 
             if event.type == pygame.USEREVENT and event.button == video2_button:
-                print('НАЖАТА КНОПКА "video2_button"')
                 change_video_mode(1424, 800)
                 fade()
                 running = False
 
             if event.type == pygame.USEREVENT and event.button == video3_button:
-                print('НАЖАТА КНОПКА "video3_button (FULL HD)"')
                 change_video_mode(1920, 1080, pygame.FULLSCREEN)
                 fade()
                 running = False
 
             if event.type == pygame.USEREVENT and event.button == video_back_button:
-                print('НАЖАТА КНОПКА "video_back_button"')
                 fade()
                 settings_menu()
 
@@ -556,6 +559,7 @@ def game():
             if event.type == pygame.QUIT:
                 running = False
                 wall_group.empty(), tiles_group.empty(), enemies_group.empty(), player_group.empty()
+                main_menu()
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 pause()
         player.input()
@@ -564,8 +568,8 @@ def game():
         screen1.fill('black')
         for sprite in all_sprites:
             camera.apply(sprite)
-        wall_group.draw(screen1)
         tiles_group.draw(screen1)
+        wall_group.draw(screen1)
         enemies_group.draw(screen1)
         enemies_group.update()
         player_group.draw(screen1)
@@ -595,14 +599,31 @@ def fade():
 
         pygame.display.flip()
         clock.tick(FPS)
+
+
+def result(res):
+    if not res:
+        image = load_image('you_win!.png')
+        x = 347
+    else:
+        image = load_image('you_died!.png')
+        x = 330
+    y = 57
+    pos = (WIDTH / 2 - x / 2), (HEIGHT / 2 - y / 2)
+    print(pos)
+    screen.blit(image, pos)
+    pygame.display.flip()
+    time.sleep(3)
+    fade()
+    game()
+
         
-        
-class Fighter():
-    def __init__(self, name, x, y, max_hp, strenght, n1, n2):
+class Fighter:
+    def __init__(self, name, x, y, max_hp, strength, n1, n2):
         self.name = name
         self.pos = x, y
         self.max_hp = max_hp
-        self.strenght = strenght
+        self.strength = strength
         self.update_time = pygame.time.get_ticks()
         self.hp = max_hp
         self.state = 0
@@ -611,10 +632,10 @@ class Fighter():
         self.states = []
 
         # load idle images
-        self.idle = []
+        self.idle_w = []
         for i in range(1, n1 + 1):
-            self.idle.append(load_image(f'{self.name}/idle/idle{i}.png'))
-        self.states.append(self.idle)
+            self.idle_w.append(load_image(f'{self.name}/idle/idle{i}.png'))
+        self.states.append(self.idle_w)
 
         # load loss hp images
         self.hp_loss = []
@@ -624,18 +645,18 @@ class Fighter():
 
         # different mobs attack differently, so we add them separately
         if self.name == 'cat':
+            # load bow attack
+            self.attack_bow = []
+            for i in range(1, 6):
+                self.attack_bow.append(load_image(f'{self.name}/bow_attack/attack_bow{i}.png'))
+            self.states.append(self.attack_bow)
+
             # load sword attack
             self.attack_sword = []
             for i in range(1, 9):
                 self.attack_sword.append(load_image(f'{self.name}/sword_attack'
                                                     f'/attack_sword{i}.png'))
             self.states.append(self.attack_sword)
-
-            # load bow attack
-            self.attack_bow = []
-            for i in range(1, 6):
-                self.attack_bow.append(load_image(f'{self.name}/bow_attack/attack_bow{i}.png'))
-            self.states.append(self.attack_bow)
 
         if self.name == 'slime':
             # load attack
@@ -647,29 +668,90 @@ class Fighter():
         self.image = self.states[self.state][self.frame_ind]
         self.alive = True
         self.rect = self.image.get_rect()
-        self.attack = False
 
     def draw(self):
         screen.blit(self.image, self.pos)
 
     def update(self):
         animation_cooldown = 100
-
         self.image = self.states[self.state][self.frame_ind]
-
-        if self.state != 0 and self.frame_ind == len(self.states[self.state]) - 1:
-            self.frame_ind = 0
-            self.state = 0
-            self.attack = False
 
         # has enough time passed since the last picture update
         if pygame.time.get_ticks() - self.update_time > animation_cooldown:
             self.update_time = pygame.time.get_ticks()
-            self.frame_ind = (self.frame_ind + 1) % len(self.states[self.state])
+            self.frame_ind += 1
+        if self.frame_ind >= len(self.states[self.state]):
+            self.idle()
+
+    def idle(self):
+        self.frame_ind = 0
+        self.state = 0
+        self.update_time = pygame.time.get_ticks()
+
+    def attacka(self, mob, n):
+        if n == 3:
+            damage = self.strength[1]
+        else:
+            damage = self.strength[0]
+        mob.hp -= damage
+        if mob.hp <= 0:
+            mob.alive = False
+        else:
+            # set attack animation
+            self.frame_ind = 0
+            self.state = n
+            self.update_time = pygame.time.get_ticks()
+
+        # set hp loss animation
+        mob.frame_ind = 0
+        mob.state = 1
+        mob.update_time = pygame.time.get_ticks()
+
+
+def update_mana(m):
+    if m >= 6:
+        mana = load_image("6mana.png")
+    else:
+        mana = load_image(f"{m}mana.png")
+    return mana
+
+
+def update_health(name, rotate, hp):
+    if name.hp * 100 / name.max_hp > 80:
+        if rotate:
+            hp = load_image("100hp_rotate.png")
+        else:
+            hp = load_image("100hp.png")
+    elif (name.hp / name.max_hp) * 100 > 60:
+        if rotate:
+            hp = load_image("80hp_rotate.png")
+        else:
+            hp = load_image("80hp.png")
+    elif (name.hp / name.max_hp) * 100 > 40:
+        if rotate:
+            hp = load_image("60hp_rotate.png")
+        else:
+            hp = load_image("60hp.png")
+    elif (name.hp / name.max_hp) * 100 > 20:
+        if rotate:
+            hp = load_image("40hp_rotate.png")
+        else:
+            hp = load_image("40hp.png")
+    elif (name.hp / name.max_hp) * 100 > 0:
+        if rotate:
+            hp = load_image("20hp_rotate.png")
+        else:
+            hp = load_image("20hp.png")
+    else:
+        if rotate:
+            hp = load_image("0hp_rotate.png")
+        else:
+            hp = load_image("0hp.png")
+    return hp
 
 
 def battle():
-    screen2 = pygame.display.set_mode(SIZE)
+    screen = pygame.display.set_mode(SIZE)
     run = True
 
     # pseudo buttons
@@ -689,49 +771,49 @@ def battle():
     health_enemy = load_image("100hp_rotate.png")
 
     # mana image
-    mana = load_image("6mana.png")
+    mana = load_image("3mana.png")
+    mana_score = 3
 
     # background image
     background = pygame.image.load(change_size(SIZE, 'data/battle_background.png'))
 
-    # cat and mob
-    cat = Fighter('cat', 350, 350, 100, 20, 12, 3)
-    slime = Fighter('slime', 550, 300, 50, 10, 5, 6)
+    current_fighter = 1
+    action_cooldown = 0
+    action_wait_time = 90
 
-    clock = pygame.time.Clock()
+    # cat and mob
+    cat = Fighter('cat', 350, 350, 100, [5, 25], 12, 3)
+    slime = Fighter('slime', 550, 300, 50, [20], 5, 6)
 
     while run:
+        screen.fill((0, 0, 0))
         # draw background
-        screen2.blit(background, (0, 0))
+        screen.blit(background, (0, 0))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
                 all_sprites.empty()
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_1 and not cat.attack:
-                cat.frame_ind = 0
-                cat.state = 3
-                cat.attack = True
-                slime.state = 1
-                slime.frame_ind = 0
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_2 and not cat.attack:
-                cat.frame_ind = 0
-                cat.state = 2
-                cat.attack = True
-                slime.state = 1
-                slime.frame_ind = 0
-
-        # draw mana and health
-        screen2.blit(health, (10, 40))
-        screen2.blit(mana, (10, 115))
-        screen2.blit(health_enemy, (1040, 40))
-
-        for btn in btns:
-            btn.draw(screen2)
-        k = 0
-        for element in numbs:
-            screen2.blit(element, (220 + k, 120))
-            k += 100
+            # bow attack
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_1:
+                # player action
+                if cat.alive:
+                    if current_fighter == 1:
+                        cat.attacka(slime, 2)
+                        current_fighter += 1
+                        mana_score += 1
+                        mana = update_mana(mana_score)
+                        health_enemy = update_health(slime, True, health_enemy)
+            # sword attack
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_2:
+                # player action
+                if cat.alive:
+                    if current_fighter == 1 and mana_score > 2:
+                        cat.attacka(slime, 3)
+                        current_fighter += 1
+                        mana_score -= 3
+                        mana = update_mana(mana_score)
+                        health_enemy = update_health(slime, True, health_enemy)
 
         cat.update()
         cat.draw()
@@ -739,8 +821,37 @@ def battle():
         slime.update()
         slime.draw()
 
-        all_sprites.draw(screen2)
-        all_sprites.update()
+        # enemy action
+        if current_fighter == 2:
+            if slime.alive:
+                action_cooldown += 1
+                if action_cooldown >= action_wait_time:
+                    slime.attacka(cat, 2)
+                    current_fighter -= 1
+                    health = update_health(cat, False, health)
+                    action_cooldown = 0
+            else:
+                run = False
+                fade()
+                result(False)
+
+        if not cat.alive:
+            run = False
+            fade()
+            result(True)
+
+        # draw mana and health
+        screen.blit(health, (10, 40))
+        screen.blit(mana, (10, 115))
+        screen.blit(health_enemy, (1040, 40))
+
+        for btn in btns:
+            btn.draw(screen)
+        k = 0
+        for element in numbs:
+            screen.blit(element, (220 + k, 120))
+            k += 100
+
         pygame.display.flip()
 
 
