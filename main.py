@@ -1,4 +1,5 @@
 import time
+import shutil
 import pygame
 import pygame.mixer
 import sys
@@ -7,6 +8,16 @@ from PIL import Image
 
 pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=512, devicename=None)
 pygame.init()
+all_sprites = pygame.sprite.Group()
+player_group = pygame.sprite.Group()
+enemies_group = pygame.sprite.Group()
+tiles_group = pygame.sprite.Group()
+wall_group = pygame.sprite.Group()
+STEP = 50
+
+
+def new_game():
+    shutil.copy('data/lvl1.txt', 'data/level1_copy.txt')
 
 
 def change_size(size, name):
@@ -33,6 +44,7 @@ def sound_playback(file, volume=0.4, flagstoporpause=False):
 
 SIZE = WIDTH, HEIGHT = 1280, 800
 FPS = 60
+level = []
 clock = pygame.time.Clock()
 screen = pygame.display.set_mode(SIZE)
 s = pygame.mixer.Sound('sounds/music_fon.wav')
@@ -45,6 +57,13 @@ pygame.display.set_caption('The Legend of a Kingdom')
 cursor = pygame.image.load("data/cursor.png")
 pygame.mouse.set_visible(False)
 gromkost = 1.0
+
+
+def record(name):
+    global level
+    with open(name, 'w') as f:
+        for strk in level:
+            f.writelines(''.join(strk) + '\n')
 
 
 def load_image(name, colorkey=None):
@@ -118,6 +137,9 @@ class Camera:
         self.dy = HEIGHT // 2 - target.rect.y - target.rect.h // 2
 
 
+camera = Camera()
+
+
 class AnimatedSprite(pygame.sprite.Sprite):
     def __init__(self, sheet, columns, rows, x, y, enemy):
         super().__init__(all_sprites, enemies_group)
@@ -179,9 +201,9 @@ class Player(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
         super().__init__(player_group, all_sprites)
         self.image = pygame.image.load("data/down/down1.png")
-        self.pos_x, self.pos_y = tile_width * pos_x + 13, tile_height * pos_y + 5
+        self.pos_x, self.pos_y = tile_width * pos_x, tile_height * pos_y
         self.rect = self.image.get_rect()
-        self.rect.x, self.rect.y = tile_width * pos_x + 13, tile_height * pos_y + 5
+        self.rect.x, self.rect.y = tile_width * pos_x, tile_height * pos_y
         self.status = ''
         self.hero_image_number_up = 0
         self.hero_image_number_down = 0
@@ -191,29 +213,27 @@ class Player(pygame.sprite.Sprite):
 
     def move(self, x, y):
         # Сохраняем текущую позицию
-        current_pos = self.rect.topleft
+        current_pos = self.pos_x, self.pos_y
 
         # Двигаем спрайт
         self.rect = self.rect.move(x, y)
         self.pos_x, self.pos_y = self.pos_x + x, self.pos_y + y
 
+        # Проверяем столкновения с группой врагов
+        enemy_collision = pygame.sprite.spritecollideany(self, enemies_group)
+        if enemy_collision and pygame.sprite.collide_mask(self, enemy_collision):
+            battle(self.pos_x // 200, self.pos_y // 200)
+
         # Проверяем столкновения с группой стен
         wall_collision = pygame.sprite.spritecollideany(self, wall_group)
         if wall_collision and pygame.sprite.collide_mask(self, wall_collision):
             # Если есть столкновение со стеной, возвращаемся на предыдущую позицию
-            self.rect.topleft = current_pos
+            self.rect = self.rect.move(-x, -y)
             self.pos_x, self.pos_y = current_pos
 
         # Проверяем столкновения с группой стен
         if pygame.sprite.spritecollideany(self, wall_group):
-            self.rect.topleft = current_pos
-            self.pos_x, self.pos_y = current_pos
-
-        # Проверяем столкновения с группой врагов
-        enemy_collision = pygame.sprite.spritecollideany(self, enemies_group)
-        if enemy_collision and pygame.sprite.collide_mask(self, enemy_collision):
-            # Если есть столкновение с врагом, возвращаемся на предыдущую позицию
-            self.rect.topleft = current_pos
+            self.rect = self.rect.move(-x, -y)
             self.pos_x, self.pos_y = current_pos
 
     def input(self):
@@ -264,8 +284,11 @@ class Player(pygame.sprite.Sprite):
 
 def generate_level(level):
     new_player, x, y = None, None, None
+    lvl = []
     for y in range(len(level)):
+        s = []
         for x in range(len(level[y])):
+            s.append(level[y][x])
             if level[y][x] in ['.', 'w', 'd', 'e', 'c', 'q', 'z', 'r', 'y', 'f', 'g']:
                 Tile(level[y][x], x, y)
             elif level[y][x] == 's':
@@ -281,16 +304,8 @@ def generate_level(level):
             elif level[y][x] == '@':
                 Tile('r', x, y)
                 new_player = Player(x, y)
-    return new_player, x, y
-
-
-all_sprites = pygame.sprite.Group()
-player_group = pygame.sprite.Group()
-enemies_group = pygame.sprite.Group()
-tiles_group = pygame.sprite.Group()
-wall_group = pygame.sprite.Group()
-camera = Camera()
-STEP = 50
+        lvl.append(s)
+    return new_player, x, y, lvl
 
 
 class ImageButton:  # Воспомогательный класс для загрузки кнопок на основное окно
@@ -761,43 +776,15 @@ def sound_settings():
         clock.tick(FPS)
 
 
-def new_game():
-    # Создание кнопок если понадобятся
-
-    running = True
-    while running:
-        screen.fill((255, 255, 255))
-        screen.blit(background_image, (0, 0))
-
-        font = pygame.font.Font(None, 72)
-        text_surface = font.render("Добро пожаловать в игру!", True,
-                                   (255, 255, 255))
-        text_rect = text_surface.get_rect(center=(WIDTH / 2, HEIGHT / 2))
-        screen.blit(text_surface, text_rect)
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-                pygame.quit()
-                sys.exit()
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                running = False
-                fade()
-                main_menu()
-
-        x, y = pygame.mouse.get_pos()
-        screen.blit(cursor, (x, y))
-
-        pygame.display.flip()
-
-
 def game():
+    global level
     screen1 = pygame.display.set_mode((WIDTH, HEIGHT))
     if WIDTH == 1920 and HEIGHT == 1080:
         change_video_mode(1920, 1080, pygame.FULLSCREEN)
     else:
         change_video_mode(WIDTH, HEIGHT)
-    player, level_x, level_y = generate_level(load_level('lvl1.txt'))
+    player, level_x, level_y, lvl = generate_level(load_level('level1_copy.txt'))
+    level = lvl
     running = True
     while running:
         screen.fill((0, 0, 0))
@@ -808,6 +795,7 @@ def game():
             if event.type == pygame.QUIT:
                 running = False
                 wall_group.empty(), tiles_group.empty(), enemies_group.empty(), player_group.empty()
+                main_menu()
         player.input()
         player.update(player.get_status())
         camera.update(player)
@@ -856,10 +844,10 @@ def fade():
 
 def result(res):
     if not res:
-        image = load_image('you_win!.png')
+        image = pygame.image.load('data/you_win!.png')
         x = 347
     else:
-        image = load_image('you_died!.png')
+        image = pygame.image.load('data/you_died!.png')
         x = 330
     y = 57
     pos = (WIDTH / 2 - x / 2), (HEIGHT / 2 - y / 2)
@@ -1002,8 +990,8 @@ def update_health(name, rotate, hp):
     return hp
 
 
-def battle():
-    screen = pygame.display.set_mode(SIZE)
+def battle(posi_x, posi_y):
+    global level
     run = True
 
     # pseudo buttons
@@ -1038,14 +1026,10 @@ def battle():
     slime = Fighter('slime', 550, 300, 50, [20], 5, 6)
 
     while run:
-        screen.fill((0, 0, 0))
         # draw background
         screen.blit(background, (0, 0))
 
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                run = False
-                all_sprites.empty()
             # bow attack
             if event.type == pygame.KEYDOWN and event.key == pygame.K_1:
                 # player action
@@ -1084,6 +1068,21 @@ def battle():
                     action_cooldown = 0
             else:
                 run = False
+                wall_group.empty(), tiles_group.empty(), enemies_group.empty(), player_group.empty()
+                for i in range(len(level)):
+                    for j in range(len(level[i])):
+                        if level[i][j] == '@':
+                            level[i][j] = '.'
+                if level[posi_y][posi_x] == 's':
+                    level[posi_y][posi_x] = '@'
+                else:
+                    if level[posi_y + 1][posi_x] == 's':
+                        level[posi_y + 1][posi_x] = '@'
+                    elif level[posi_y][posi_x + 1] == 's':
+                        level[posi_y][posi_x + 1] = '@'
+                    elif level[posi_y + 1][posi_x + 1] == 's':
+                        level[posi_y + 1][posi_x + 1] = '@'
+                record('data/level1_copy.txt')
                 fade()
                 result(False)
 
@@ -1105,8 +1104,6 @@ def battle():
             k += 100
 
         pygame.display.flip()
-        all_sprites.draw(screen)
-        all_sprites.update()
 
         x, y = pygame.mouse.get_pos()
         screen.blit(cursor, (x, y))
