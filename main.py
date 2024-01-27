@@ -14,6 +14,8 @@ enemies_group = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
 tree_group = pygame.sprite.Group()
 wall_group = pygame.sprite.Group()
+door_group = pygame.sprite.Group()
+rock_group = pygame.sprite.Group()
 STEP = 50
 
 
@@ -93,7 +95,9 @@ tile_images = {'wall': load_image('wall.png'), '.': load_image('grass.png'),
                'e': load_image('path_right_turn.png'), 'c': load_image('path_right_turn_s.png'),
                'q': load_image('path_turn_l.png'), 'z': load_image('path_turn.png'),
                'r': load_image('end_a_path.png'), 'y': load_image('end_d_path.png'),
-               'f': load_image('end_s_path.png'), 'g': load_image('end_w_path.png')}
+               'f': load_image('end_s_path.png'), 'g': load_image('end_w_path.png'),
+               'm': load_image('door_left.png'), 'n': load_image('door_right.png'),
+               'p': load_image('rock.png')}
 enemies_images = {'s': load_image('slime_idle.png')}
 tile_width = tile_height = 200
 move_up = [load_image('up/up1.png'), load_image('up/up2.png'), load_image('up/up3.png'),
@@ -208,6 +212,24 @@ class Tree(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
 
 
+class Door(pygame.sprite.Sprite):
+    def __init__(self, tile_type, pos_x, pos_y):
+        super().__init__(door_group, all_sprites)
+        self.image = tile_images[tile_type]
+        self.rect = self.image.get_rect()
+        self.rect.x, self.rect.y = tile_width * pos_x, tile_height * pos_y
+        self.mask = pygame.mask.from_surface(self.image)
+
+
+class Rock(pygame.sprite.Sprite):
+    def __init__(self, tile_type, pos_x, pos_y):
+        super().__init__(rock_group, all_sprites)
+        self.image = tile_images[tile_type]
+        self.rect = self.image.get_rect()
+        self.rect.x, self.rect.y = tile_width * pos_x, tile_height * pos_y
+        self.mask = pygame.mask.from_surface(self.image)
+
+
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
         super().__init__(player_group, all_sprites)
@@ -242,15 +264,29 @@ class Player(pygame.sprite.Sprite):
             self.rect = self.rect.move(-x, -y)
             self.pos_x, self.pos_y = current_pos
 
+        # Проверяем столкновения с группой дверей
+        door_collision = pygame.sprite.spritecollideany(self, door_group)
+        if door_collision and pygame.sprite.collide_mask(self, door_collision):
+            # Если есть столкновение со стеной, возвращаемся на предыдущую позицию
+            self.rect = self.rect.move(-x, -y)
+            self.pos_x, self.pos_y = current_pos
+            print('Столкновение с дверью!')
+
         # Проверяем столкновения с группой стен
         if pygame.sprite.spritecollideany(self, wall_group):
             self.rect = self.rect.move(-x, -y)
             self.pos_x, self.pos_y = current_pos
 
-
         tree_collision = pygame.sprite.spritecollideany(self, tree_group)
         if tree_collision and pygame.sprite.collide_mask(self, tree_collision):
             # Если есть столкновение с деревом, возвращаемся на предыдущую позицию
+            self.rect = self.rect.move(-x, -y)
+            self.pos_x, self.pos_y = current_pos
+
+        # Проверяем столкновения с группой камней
+        rock_collision = pygame.sprite.spritecollideany(self, rock_group)
+        if rock_collision and pygame.sprite.collide_mask(self, rock_collision):
+            # Если есть столкновение со стеной, возвращаемся на предыдущую позицию
             self.rect = self.rect.move(-x, -y)
             self.pos_x, self.pos_y = current_pos
 
@@ -313,6 +349,11 @@ def generate_level(level):
                 Tile('.', x, y)
                 AnimatedSprite(load_image('slime_idle.png'), 5, 1, tile_width * x,
                                tile_height * y, "slime")
+            elif level[y][x] in ['n',  'm']:
+                Door(level[y][x], x, y)
+            elif level[y][x] == 'p':
+                Tile('.', x, y)
+                Rock(level[y][x], x, y)
             elif level[y][x] in ['a', '1', '2', '3', '4', '5', '6', '7', '8', 't']:
                 if level[y][x] == 't':
                     Tile('.', x, y)
@@ -320,7 +361,7 @@ def generate_level(level):
                 else:
                     Wall(level[y][x], x, y)
             elif level[y][x] == '@':
-                Tile('r', x, y)
+                Tile('.', x, y)
                 new_player = Player(x, y)
         lvl.append(s)
     return new_player, x, y, lvl
@@ -492,19 +533,23 @@ def change_video_mode(w, h, fullscreen=0):
 # Функция основного меню игры:
 def main_menu():
     # Кнопки
-    play_button = ImageButton(WIDTH / 2 - (252 / 2), 175, 252, 75, "",
+    new_game_button = ImageButton(WIDTH / 2 - (252 / 2), 175, 252, 75, "",
+                                  "data/new_game.png",
+                                  "data/new_game_hover.png",
+                                  "sounds/knopka.mp3")
+    play_button = ImageButton(WIDTH / 2 - (252 / 2), 250, 252, 75, "",
                               "data/start.png",
                               "data/start_hover.png",
                               "sounds/knopka.mp3")
-    settings_button = ImageButton(WIDTH / 2 - (252 / 2), 250, 252, 74, "",
+    settings_button = ImageButton(WIDTH / 2 - (252 / 2), 325, 252, 74, "",
                                   "data/settings.png",
                                   "data/settings_hover.png",
                                   "sounds/knopka.mp3")
-    store_button = ImageButton(WIDTH / 2 - (252 / 2), 325, 252, 74, "",
+    store_button = ImageButton(WIDTH / 2 - (252 / 2), 400, 252, 74, "",
                                "data/store.png",
                                "data/store_hover.png",
                                "sounds/knopka.mp3")
-    quit_button = ImageButton(WIDTH / 2 - (252 / 2), 400, 252, 74, "",
+    quit_button = ImageButton(WIDTH / 2 - (252 / 2), 475, 252, 74, "",
                               "data/quit.png",
                               "data/qui_hovert.png",
                               "sounds/knopka.mp3")
@@ -512,7 +557,8 @@ def main_menu():
                             "data/game_name.png",
                             "data/game_name.png",
                             "sounds/knopka.mp3")
-    btn = [play_button, settings_button, store_button, quit_button]  # Добавление кнопок в список
+    # Добавление кнопок в список
+    btn = [new_game_button, play_button, settings_button, store_button, quit_button]
     running = True
     while running:
         screen.fill((255, 255, 255))
@@ -522,6 +568,10 @@ def main_menu():
                 running = False
                 pygame.quit()
                 sys.exit()
+
+            if event.type == pygame.USEREVENT and event.button == new_game_button:
+                fade()
+                print("Нажата кнопка 'new_game_button'")
 
             if event.type == pygame.USEREVENT and event.button == play_button:
                 fade()
@@ -831,6 +881,8 @@ def game():
         tiles_group.draw(screen1)
         wall_group.draw(screen1)
         tree_group.draw(screen1)
+        door_group.draw(screen1)
+        rock_group.draw(screen1)
         enemies_group.draw(screen1)
         enemies_group.update()
         player_group.draw(screen1)
