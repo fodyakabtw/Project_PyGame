@@ -17,6 +17,7 @@ wall_group = pygame.sprite.Group()
 door_group = pygame.sprite.Group()
 rock_group = pygame.sprite.Group()
 STEP = 50
+start_x, start_y = 0, 0
 
 
 def change_size(size, name):
@@ -41,7 +42,8 @@ def sound_playback(file, volume=0.4, flagstoporpause=False):
         s.play()
 
 
-SIZE = WIDTH, HEIGHT = 1280, 800
+with open('data/window_size.txt', 'r') as f:
+    SIZE = WIDTH, HEIGHT = list(map(int, f.readline().split()))
 FPS = 60
 level = []
 clock = pygame.time.Clock()
@@ -237,12 +239,18 @@ class Rock(pygame.sprite.Sprite):
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
+        global start_x, start_y
         super().__init__(player_group, all_sprites)
         self.image = pygame.image.load("data/down/down1.png")
-        self.pos_x, self.pos_y = tile_width * pos_x, tile_height * pos_y
         self.rect = self.image.get_rect()
-        self.rect.x, self.rect.y = tile_width * pos_x, tile_height * pos_y
+        if start_x != 0 and start_y != 0:
+            self.pos_x, self.pos_y = tile_width * start_x, tile_height * start_y
+            self.rect.x, self.rect.y = tile_width * start_x, tile_height * start_y
+        else:
+            self.pos_x, self.pos_y = tile_width * pos_x, tile_height * pos_y
+            self.rect.x, self.rect.y = tile_width * pos_x, tile_height * pos_y
         self.status = ''
+        self.start_pos = pos_x * tile_width, pos_y * tile_height
         self.hero_image_number_up = 0
         self.hero_image_number_down = 0
         self.hero_image_number_right = 0
@@ -250,6 +258,7 @@ class Player(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
 
     def move(self, x, y):
+        global name, start_x, start_y
         # Сохраняем текущую позицию
         current_pos = self.pos_x, self.pos_y
 
@@ -276,7 +285,15 @@ class Player(pygame.sprite.Sprite):
             self.rect = self.rect.move(-x, -y)
             self.pos_x, self.pos_y = current_pos
             sound_playback('sounds/door .mp3', 0.4)
-            print('Столкновение с дверью!')
+            if name == 'data/level1_copy.txt':
+                name = 'data/level2_copy.txt'
+            else:
+                name = 'data/level1_copy.txt'
+            (wall_group.empty(), tiles_group.empty(), enemies_group.empty(),
+             player_group.empty(), tree_group.empty(), door_group.empty(),
+             rock_group.empty())
+            start_x, start_y = 0, 0
+            game()
 
         # Проверяем столкновения с группой стен
         if pygame.sprite.spritecollideany(self, wall_group):
@@ -538,6 +555,7 @@ def change_video_mode(w, h, fullscreen=0):
 
 # Функция основного меню игры:
 def main_menu():
+    global SIZE
     # Кнопки
     new_game_button = ImageButton(WIDTH / 2 - (252 / 2), 175, 252, 75, "",
                                   "data/new_game.png",
@@ -572,6 +590,8 @@ def main_menu():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+                with open('data/window_size.txt', 'w') as f:
+                    f.writelines(str(SIZE[0]) + " " + str(SIZE[1]))
                 pygame.quit()
                 sys.exit()
 
@@ -592,6 +612,8 @@ def main_menu():
 
             if event.type == pygame.USEREVENT and event.button == quit_button:
                 running = False
+                with open('data/window_size.txt', 'w') as f:
+                    f.writelines(str(SIZE[0]) + " " + str(SIZE[1]))
                 pygame.quit()
                 sys.exit()
 
@@ -1078,7 +1100,7 @@ def update_health(name, rotate, hp):
 
 
 def battle(posi_x, posi_y):
-    global level
+    global level, start_x, start_y
     run = True
 
     # pseudo buttons
@@ -1161,21 +1183,18 @@ def battle(posi_x, posi_y):
                 (wall_group.empty(), tiles_group.empty(), enemies_group.empty(),
                  player_group.empty(), tree_group.empty(), door_group.empty(),
                  rock_group.empty())
-                for i in range(len(level)):
-                    for j in range(len(level[i])):
-                        if level[i][j] == '@':
-                            level[i][j] = '.'
                 if level[posi_y][posi_x] == 's':
-                    level[posi_y][posi_x] = '@'
+                    level[posi_y][posi_x] = '.'
                 else:
                     if level[posi_y + 1][posi_x] == 's':
-                        level[posi_y + 1][posi_x] = '@'
+                        level[posi_y + 1][posi_x] = '.'
                     elif level[posi_y][posi_x + 1] == 's':
-                        level[posi_y][posi_x + 1] = '@'
+                        level[posi_y][posi_x + 1] = '.'
                     elif level[posi_y + 1][posi_x + 1] == 's':
-                        level[posi_y + 1][posi_x + 1] = '@'
+                        level[posi_y + 1][posi_x + 1] = '.'
                 record('data/level1_copy.txt')
                 fade()
+                start_x, start_y = posi_x, posi_y
                 result(False)
 
         if not cat.alive:
