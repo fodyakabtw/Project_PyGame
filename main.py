@@ -275,6 +275,7 @@ class Player(pygame.sprite.Sprite):
             # Если есть столкновение со стеной, возвращаемся на предыдущую позицию
             self.rect = self.rect.move(-x, -y)
             self.pos_x, self.pos_y = current_pos
+            sound_playback('sounds/door .mp3', 0.4)
             print('Столкновение с дверью!')
 
         # Проверяем столкновения с группой стен
@@ -456,16 +457,17 @@ def pause():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 fade()
-                wall_group.empty(), tiles_group.empty(), enemies_group.empty(), player_group.empty()
-                tree_group.empty(), rock_group.empty(), door_group.empty()
+                (wall_group.empty(), tiles_group.empty(), enemies_group.empty(),
+                 player_group.empty(), tree_group.empty(), door_group.empty(),
+                 rock_group.empty())
                 main_menu()
 
             if event.type == pygame.KEYDOWN and event.key == pygame.K_1:
-                wall_group.empty(), tiles_group.empty(), enemies_group.empty(), player_group.empty()
                 sound_playback('sounds/knopka.mp3', gromkost)
                 fade()
-                wall_group.empty(), tiles_group.empty(), enemies_group.empty(), player_group.empty()
-                tree_group.empty()
+                (wall_group.empty(), tiles_group.empty(), enemies_group.empty(),
+                 player_group.empty(), tree_group.empty(), door_group.empty(),
+                 rock_group.empty())
                 main_menu()
 
                 paused = False
@@ -482,8 +484,9 @@ def pause():
                     s.play()
 
             if event.type == pygame.KEYDOWN and event.key == pygame.K_4:
-                wall_group.empty(), tiles_group.empty(), enemies_group.empty(), player_group.empty()
-                tree_group.empty()
+                (wall_group.empty(), tiles_group.empty(), enemies_group.empty(),
+                 player_group.empty(), tree_group.empty(), door_group.empty(),
+                 rock_group.empty())
                 sound_playback('sounds/knopka.mp3', gromkost)
                 fade()
                 game()
@@ -872,8 +875,9 @@ def game():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-                wall_group.empty(), tiles_group.empty(), enemies_group.empty(), player_group.empty()
-                tree_group.empty()
+                (wall_group.empty(), tiles_group.empty(), enemies_group.empty(),
+                 player_group.empty(), tree_group.empty(), door_group.empty(),
+                 rock_group.empty())
                 main_menu()
         player.input()
         player.update(player.get_status())
@@ -937,8 +941,9 @@ def result(res):
     pygame.display.flip()
     time.sleep(3)
     fade()
-    wall_group.empty(), tiles_group.empty(), enemies_group.empty(), player_group.empty()
-    tree_group.empty()
+    (wall_group.empty(), tiles_group.empty(), enemies_group.empty(),
+     player_group.empty(), tree_group.empty(), door_group.empty(),
+     rock_group.empty())
     game()
 
 
@@ -1120,6 +1125,7 @@ def battle(posi_x, posi_y):
                 if cat.alive:
                     if current_fighter == 1:
                         cat.attacka(slime, 2)
+                        sound_playback('sounds/bow.mp3', 0.4)
                         current_fighter += 1
                         mana_score += 1
                         mana = update_mana(mana_score)
@@ -1130,6 +1136,7 @@ def battle(posi_x, posi_y):
                 if cat.alive:
                     if current_fighter == 1 and mana_score > 2:
                         cat.attacka(slime, 3)
+                        sound_playback('sounds/sword.mp3', 0.4)
                         current_fighter += 1
                         mana_score -= 3
                         mana = update_mana(mana_score)
@@ -1147,13 +1154,15 @@ def battle(posi_x, posi_y):
                 action_cooldown += 1
                 if action_cooldown >= action_wait_time:
                     slime.attacka(cat, 2)
+                    sound_playback('sounds/slime_attack .mp3', 0.4)
                     current_fighter -= 1
                     health = update_health(cat, False, health)
                     action_cooldown = 0
             else:
                 run = False
-                wall_group.empty(), tiles_group.empty(), enemies_group.empty(), player_group.empty()
-                tree_group.empty(), rock_group.empty(), door_group.empty()
+                (wall_group.empty(), tiles_group.empty(), enemies_group.empty(),
+                 player_group.empty(), tree_group.empty(), door_group.empty(),
+                 rock_group.empty())
                 for i in range(len(level)):
                     for j in range(len(level[i])):
                         if level[i][j] == '@':
