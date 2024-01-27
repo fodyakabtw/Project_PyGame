@@ -899,7 +899,7 @@ def game():
         pygame.display.flip()
 
 
-# Затемнение, переход между экранами
+# Затемнение, переход между экранами.
 def fade():
     running = True
     fade_alpha = 0  #
