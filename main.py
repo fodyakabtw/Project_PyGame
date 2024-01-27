@@ -19,10 +19,6 @@ rock_group = pygame.sprite.Group()
 STEP = 50
 
 
-def new_game():
-    shutil.copy('data/lvl1.txt', 'data/level1_copy.txt')
-
-
 def change_size(size, name):
     image = Image.open(name)
     image = image.resize(size)
@@ -53,6 +49,7 @@ screen = pygame.display.set_mode(SIZE)
 s = pygame.mixer.Sound('sounds/music_fon.wav')
 s.set_volume(0.4)
 s.play(loops=-1)
+name = 'data/level1_copy.txt'
 pygame.display.set_icon(pygame.image.load('data/icon.png'))
 background_image = pygame.image.load(change_size(SIZE, 'data/background.png'))
 pygame.display.set_caption('The Legend of a Kingdom')
@@ -62,9 +59,17 @@ pygame.mouse.set_visible(False)
 gromkost = 1.0
 
 
-def record(name):
+def new_game():
+    global name
+    name = 'data/level1_copy.txt'
+    shutil.copy('data/lvl1.txt', 'data/level1_copy.txt')
+    shutil.copy('data/lvl2.txt', 'data/level2_copy.txt')
+    game()
+
+
+def record(n):
     global level
-    with open(name, 'w') as f:
+    with open(n, 'w') as f:
         for strk in level:
             f.writelines(''.join(strk) + '\n')
 
@@ -122,7 +127,7 @@ def terminate():
 
 
 def load_level(file):
-    file = f'data/{file}'
+    file = f'{file}'
     with open(file, 'r') as f:
         map_level = list(map(str.strip, f.readlines()))
     max_width = max(map(len, map_level))
@@ -571,7 +576,7 @@ def main_menu():
 
             if event.type == pygame.USEREVENT and event.button == new_game_button:
                 fade()
-                print("Нажата кнопка 'new_game_button'")
+                new_game()
 
             if event.type == pygame.USEREVENT and event.button == play_button:
                 fade()
@@ -853,13 +858,13 @@ def sound_settings():
 
 
 def game():
-    global level
+    global level, name
     screen1 = pygame.display.set_mode((WIDTH, HEIGHT))
     if WIDTH == 1920 and HEIGHT == 1080:
         change_video_mode(1920, 1080, pygame.FULLSCREEN)
     else:
         change_video_mode(WIDTH, HEIGHT)
-    player, level_x, level_y, lvl = generate_level(load_level('level1_copy.txt'))
+    player, level_x, level_y, lvl = generate_level(load_level(name))
     level = lvl
     running = True
     while running:
@@ -1150,6 +1155,7 @@ def battle(posi_x, posi_y):
             else:
                 run = False
                 wall_group.empty(), tiles_group.empty(), enemies_group.empty(), player_group.empty()
+                tree_group.empty(), rock_group.empty(), door_group.empty()
                 for i in range(len(level)):
                     for j in range(len(level[i])):
                         if level[i][j] == '@':
