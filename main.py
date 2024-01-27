@@ -786,6 +786,7 @@ def sound_settings():
                                  "data/sound_not_press.png",
                                  "data/sound_press.png",
                                  "sounds/knopka.mp3")
+    music_button = load_image('music_button.png')
     btn_list = [sound1_button, sound2_button, sound3_button, sound4_button, sound5_button,
                 sound6_button, sound7_button, sound8_button, sound9_button, sound10_button]
 
@@ -794,10 +795,7 @@ def sound_settings():
         screen.fill((0, 0, 0))
         screen.blit(background_image, (0, 0))
 
-        font = pygame.font.Font(None, 72)
-        text_surface = font.render("Sound:", True, (255, 255, 255))
-        text_rect = text_surface.get_rect(center=(0 + text_surface.get_width() / 2, HEIGHT / 2))
-        screen.blit(text_surface, text_rect)
+        screen.blit(music_button, (0, HEIGHT / 2 - 25))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -843,7 +841,7 @@ def sound_settings():
 
             for but in btn_list:
                 but.handle_event(event)
-        i = 0 + text_surface.get_width() + 10
+        i = 0 + music_button.get_width() + 10
         for but in btn_list:
             but.set_pos(i)
             i += 20
@@ -1110,8 +1108,8 @@ def battle(posi_x, posi_y):
     action_wait_time = 90
 
     # cat and mob
-    cat = Fighter('cat', 350, 350, 100, [5, 25], 12, 3)
-    slime = Fighter('slime', 550, 300, 50, [20], 5, 6)
+    cat = Fighter('cat', WIDTH / 2 - 200, HEIGHT / 2, 100, [5, 25], 12, 3)
+    slime = Fighter('slime', WIDTH / 2, HEIGHT / 2 - 50, 50, [20], 5, 6)
 
     while run:
         # draw background
@@ -1187,7 +1185,7 @@ def battle(posi_x, posi_y):
         # draw mana and health
         screen.blit(health, (10, 40))
         screen.blit(mana, (10, 115))
-        screen.blit(health_enemy, (1040, 40))
+        screen.blit(health_enemy, (WIDTH - health_enemy.get_width() - 10, 40))
 
         for btn in btns:
             btn.draw(screen)
