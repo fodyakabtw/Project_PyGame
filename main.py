@@ -430,10 +430,6 @@ flag_enable_sound = False
 def pause():
     global flag_enable_sound, gromkost
     paused = True
-    print("Нажмите клавишу 1 для того, чтобы вернуться в главное меню!")
-    print("Нажмите клавишу 2 для того, чтобы продолжить игру!")
-    print("Нажмите клавишу 3 для того, чтобы выключить музыку!")
-    print("Нажмите клавишу 4 для того, чтобы начать игру заново!")
     # Создание кнопок:
     return_to_menu = ImageButton(WIDTH / 2 - (160 / 2), 200, 160, 160, "",
                                  "data/return_to_menu.png",
@@ -459,8 +455,10 @@ def pause():
     while paused:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                pygame.quit()
-                quit()
+                fade()
+                wall_group.empty(), tiles_group.empty(), enemies_group.empty(), player_group.empty()
+                tree_group.empty(), rock_group.empty(), door_group.empty()
+                main_menu()
 
             if event.type == pygame.KEYDOWN and event.key == pygame.K_1:
                 wall_group.empty(), tiles_group.empty(), enemies_group.empty(), player_group.empty()
