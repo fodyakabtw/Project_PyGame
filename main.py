@@ -6,6 +6,7 @@ import sys
 import os
 from PIL import Image
 
+# Создаем глобальные переменный
 pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=512, devicename=None)
 pygame.init()
 all_sprites = pygame.sprite.Group()
@@ -61,6 +62,7 @@ pygame.mouse.set_visible(False)
 gromkost = 1.0
 
 
+# Функция для начаа новой игры
 def new_game():
     global name
     name = 'data/level1_copy.txt'
@@ -69,6 +71,7 @@ def new_game():
     game()
 
 
+# Запись лвла
 def record(n):
     global level
     with open(n, 'w') as f:
@@ -76,6 +79,7 @@ def record(n):
             f.writelines(''.join(strk) + '\n')
 
 
+# Функция для загрузки изображения
 def load_image(name, colorkey=None):
     fullname = os.path.join('data', name)
     if not os.path.isfile(fullname):
@@ -92,6 +96,7 @@ def load_image(name, colorkey=None):
     return image
 
 
+# Словари со спрайтами
 tile_images = {'wall': load_image('wall.png'), '.': load_image('grass.png'),
                'a': load_image('abroad.png'), '1': load_image('upper_left_corner.png'),
                '2': load_image('left_wall.png'), '3': load_image('lower_left_corner.png'),
@@ -106,7 +111,7 @@ tile_images = {'wall': load_image('wall.png'), '.': load_image('grass.png'),
                'm': load_image('door_left.png'), 'n': load_image('door_right.png'),
                'p': load_image('rock.png')}
 enemies_images = {'s': load_image('slime_idle.png')}
-tile_width = tile_height = 200
+tile_width = tile_height = 200  # Размер спрайтов на карте
 move_up = [load_image('up/up1.png'), load_image('up/up2.png'), load_image('up/up3.png'),
            load_image('up/up4.png'), load_image('up/up5.png'), load_image('up/up6.png'),
            load_image('up/up7.png'), load_image('up/up8.png')]
@@ -128,6 +133,7 @@ def terminate():
     sys.exit()
 
 
+# Функция считывания лвла из файла
 def load_level(file):
     file = f'{file}'
     with open(file, 'r') as f:
@@ -136,6 +142,7 @@ def load_level(file):
     return list(map(lambda x: x.ljust(max_width, '.'), map_level))
 
 
+# Класс камеры
 class Camera:
     def __init__(self):
         self.dx = 0
@@ -149,9 +156,11 @@ class Camera:
         self.dy = HEIGHT // 2 - target.rect.y - target.rect.h // 2
 
 
+# Создаем камеру
 camera = Camera()
 
 
+# Класс анимированных спрайтов
 class AnimatedSprite(pygame.sprite.Sprite):
     def __init__(self, sheet, columns, rows, x, y, enemy):
         super().__init__(all_sprites, enemies_group)
@@ -192,6 +201,7 @@ class AnimatedSprite(pygame.sprite.Sprite):
         self.image = self.frames[self.cur_frame]
 
 
+# Класс травы
 class Tile(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pox_y):
         super().__init__(tiles_group, all_sprites)
@@ -201,6 +211,7 @@ class Tile(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
 
 
+# Класс стен
 class Wall(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y):
         super().__init__(wall_group, all_sprites)
@@ -210,6 +221,7 @@ class Wall(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
 
 
+# Класс деревьев
 class Tree(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y):
         super().__init__(tree_group, all_sprites)
@@ -219,6 +231,7 @@ class Tree(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
 
 
+# Класс дверей
 class Door(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y):
         super().__init__(door_group, all_sprites)
@@ -228,6 +241,7 @@ class Door(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
 
 
+# Класс камней
 class Rock(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y):
         super().__init__(rock_group, all_sprites)
@@ -237,6 +251,7 @@ class Rock(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
 
 
+# Класс игрока
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
         global start_x, start_y
@@ -257,6 +272,7 @@ class Player(pygame.sprite.Sprite):
         self.hero_image_number_left = 0
         self.mask = pygame.mask.from_surface(self.image)
 
+    # Функция передвижения
     def move(self, x, y):
         global name, start_x, start_y
         # Сохраняем текущую позицию
@@ -281,7 +297,6 @@ class Player(pygame.sprite.Sprite):
         # Проверяем столкновения с группой дверей
         door_collision = pygame.sprite.spritecollideany(self, door_group)
         if door_collision and pygame.sprite.collide_mask(self, door_collision):
-            # Если есть столкновение со стеной, возвращаемся на предыдущую позицию
             self.rect = self.rect.move(-x, -y)
             self.pos_x, self.pos_y = current_pos
             sound_playback('sounds/door .mp3', 0.4)
@@ -359,6 +374,7 @@ class Player(pygame.sprite.Sprite):
             self.image = move_left[self.hero_image_number_left % 4]
 
 
+# Функция генерирования лвла
 def generate_level(level):
     new_player, x, y = None, None, None
     lvl = []
@@ -372,7 +388,7 @@ def generate_level(level):
                 Tile('.', x, y)
                 AnimatedSprite(load_image('slime_idle.png'), 5, 1, tile_width * x,
                                tile_height * y, "slime")
-            elif level[y][x] in ['n',  'm']:
+            elif level[y][x] in ['n', 'm']:
                 Door(level[y][x], x, y)
             elif level[y][x] == 'p':
                 Tile('.', x, y)
@@ -878,6 +894,7 @@ def sound_settings():
         clock.tick(FPS)
 
 
+# Функция передвижения
 def game():
     global level, name
     screen1 = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -948,6 +965,7 @@ def fade():
         clock.tick(FPS)
 
 
+# Класс окончания battl'a
 def result(res):
     if not res:
         image = pygame.image.load('data/you_win!.png')
@@ -966,7 +984,7 @@ def result(res):
      rock_group.empty())
     game()
 
-
+# Класс бойца
 class Fighter:
     def __init__(self, name, x, y, max_hp, strength, n1, n2):
         self.name = name
@@ -1018,9 +1036,11 @@ class Fighter:
         self.alive = True
         self.rect = self.image.get_rect()
 
+    # Функция отрисовки бойцца
     def draw(self):
         screen.blit(self.image, self.pos)
 
+    # Обновление картинки
     def update(self):
         animation_cooldown = 100
         self.image = self.states[self.state][self.frame_ind]
@@ -1032,11 +1052,13 @@ class Fighter:
         if self.frame_ind >= len(self.states[self.state]):
             self.idle()
 
+    # Функция для старта анимации idle
     def idle(self):
         self.frame_ind = 0
         self.state = 0
         self.update_time = pygame.time.get_ticks()
 
+    # Функция атаки
     def attacka(self, mob, n):
         if n == 3:
             damage = self.strength[1]
@@ -1057,6 +1079,7 @@ class Fighter:
         mob.update_time = pygame.time.get_ticks()
 
 
+# Функция для обновления картинки с маной
 def update_mana(m):
     if m >= 6:
         mana = load_image("6mana.png")
@@ -1065,6 +1088,7 @@ def update_mana(m):
     return mana
 
 
+# Функция для обновления картинки со здоровьем
 def update_health(name, rotate, hp):
     if name.hp * 100 / name.max_hp > 80:
         if rotate:
@@ -1099,6 +1123,7 @@ def update_health(name, rotate, hp):
     return hp
 
 
+# Функция боя
 def battle(posi_x, posi_y):
     global level, start_x, start_y
     run = True
@@ -1192,7 +1217,7 @@ def battle(posi_x, posi_y):
                         level[posi_y][posi_x + 1] = '.'
                     elif level[posi_y + 1][posi_x + 1] == 's':
                         level[posi_y + 1][posi_x + 1] = '.'
-                record('data/level1_copy.txt')
+                record(name)
                 fade()
                 start_x, start_y = posi_x, posi_y
                 result(False)
